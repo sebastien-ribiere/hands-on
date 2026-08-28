@@ -1,0 +1,9 @@
+# Profile: academy-spells
+#
+# The supported path for teams building spells at the Academy.
+
+name = "academy-spells"
+description = "Golden path for Academy spell development"
+
+# Rules enforced by this profile, by id. Each id maps to rules/<id>.toml.
+rules = ["ARCH-001"]

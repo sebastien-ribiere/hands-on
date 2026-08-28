@@ -1,0 +1,7 @@
+# Golden Thread cache and recorded evidence
+.golden-thread/
+
+# In a real project the manifest IS committed: it is what pins the golden path
+# for everyone on the team. It is ignored here only because the demo's --source
+# is an absolute path, specific to the machine running the hands-on.
+golden-thread.json

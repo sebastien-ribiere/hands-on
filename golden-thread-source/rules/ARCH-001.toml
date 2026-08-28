@@ -1,0 +1,31 @@
+# ARCH-001
+#
+# Protection spells may depend on the Air and Water elements.
+# They may not depend on Fire.
+#
+# This is an architecture convention, not a naming convention: it is enforced
+# against the real import graph of the project.
+
+id = "ARCH-001"
+title = "Protection spells must not depend on Fire"
+rationale = """
+A protection spell that reaches into Fire couples a defensive concern to a
+destructive one. Fire changes for offensive reasons; protection must not be
+dragged along with it.
+"""
+
+# Name of the check engine, implemented in the golden-thread CLI.
+check = "layered_dependencies"
+
+[params]
+# Convention imposed by the golden path: application code lives under src/.
+source_root = "src"
+
+[[params.layers]]
+name = "protection"
+# Modules in this layer, matched on the module path.
+match = "spells.protection"
+# Internal dependencies this layer is allowed to reach.
+allow = ["spells.elements.air", "spells.elements.water"]
+# Internal dependencies explicitly forbidden. Deny wins over allow.
+deny = ["spells.elements.fire"]

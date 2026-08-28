@@ -1,0 +1,8 @@
+# Golden Thread - corporate source of authority.
+#
+# This repository is the distributed golden path. It is versioned by Git tags.
+# It carries POLICY (declarative). The engine that interprets the policy lives
+# in the golden-thread CLI, not here.
+
+schema_version = 1
+default_profile = "academy-spells"

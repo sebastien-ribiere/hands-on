@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "golden-thread"
+version = "0.1.0"
+description = "A versioned golden path for projects. Harness-agnostic core."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+golden-thread = "golden_thread.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

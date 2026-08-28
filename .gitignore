@@ -1,0 +1,7 @@
+# Golden Thread source published locally for the demo. Rebuilt by
+# demo/publish-source.sh from the tracked golden-thread-source/ tree.
+.demo/
+
+__pycache__/
+*.pyc
+.pytest_cache/
