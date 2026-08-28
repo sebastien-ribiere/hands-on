@@ -26,7 +26,7 @@ def test_compliant_project_passes(spellbook):
     result = layered_dependencies.run(RULE, spellbook)
     assert result.status == PASS
     assert result.violations == []
-    assert result.scanned_files > 0
+    assert result.subject.file_count > 0
 
 
 def test_offense_may_depend_on_fire(spellbook):

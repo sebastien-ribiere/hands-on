@@ -1,9 +1,14 @@
 """The golden-thread command line.
 
+Every command has a human-readable form and a `--json` form carrying the same
+evidence. Neither ever reports a bare verdict: a status is always shown with
+the subject, producer and method it came from.
+
 Exit codes:
   0  ON PATH, or INCOMPLETE (nothing verified yet)
-  1  OFF PATH: a rule failed or could not run
+  1  OFF PATH: a requirement failed on evidence that still applies
   2  the command itself could not run
+  3  STALE: evidence exists but no longer describes this project
 """
 
 import argparse
@@ -11,12 +16,13 @@ import sys
 from pathlib import Path
 
 from . import manifest as manifest_mod
-from . import policy, source, state, status as status_mod, verify
+from . import policy, report, source, state, status as status_mod, verify
 from .errors import GoldenThreadError
 from .paths import WORK_DIR_NAME
-from .results import ERROR, PASS
+from .results import ERROR
 
 LABEL_WIDTH = 14
+INDENT = " " * 7
 
 
 def _line(label: str, value: str) -> str:
@@ -35,6 +41,113 @@ def _ensure_gitignored(project: Path) -> None:
         f"{existing}{prefix}# Golden Thread cache and recorded evidence\n{entry}\n",
         encoding="utf-8",
     )
+
+
+def _git_note(subject) -> str:
+    """Context, never the mechanism: the digest is what decides."""
+    if not subject.git_revision:
+        return ""
+    dirty = ", dirty" if subject.git_dirty else ""
+    return f"   git {subject.git_revision[:12]}{dirty}"
+
+
+def _describe(subject) -> str:
+    return f"{subject.file_count} file(s) sha256:{subject.short_digest}"
+
+
+def _print_provenance(entry) -> None:
+    """Where a claim comes from. Printed for every requirement, always."""
+    evidence = entry.evidence
+    current = entry.freshness.current_subject
+    subject = evidence.subject
+
+    if entry.reported_status == status_mod.STALE:
+        print(
+            f"{INDENT}subject   recorded {_describe(subject)}{_git_note(subject)}"
+        )
+        if current is not None:
+            print(
+                f"{INDENT}          current  {_describe(current)}{_git_note(current)}"
+            )
+    else:
+        print(
+            f"{INDENT}subject   {subject.root}/ - {_describe(subject)}"
+            f"{_git_note(subject)}"
+        )
+    print(f"{INDENT}method    {evidence.method}")
+    print(f"{INDENT}producer  {evidence.producer}")
+    print(f"{INDENT}recorded  {evidence.timestamp}")
+
+
+def _print_entry(entry) -> None:
+    reported = entry.reported_status
+    print(f"{reported.ljust(6)} {entry.requirement}  {entry.title}")
+
+    if entry.evidence is None:
+        print(f"{INDENT}never verified")
+        print()
+        return
+
+    if reported == status_mod.STALE:
+        print(
+            f"{INDENT}recorded {entry.evidence.result.status} no longer applies:"
+        )
+        for reason in entry.freshness.reasons:
+            print(f"{INDENT}  - {reason}")
+    else:
+        if reported == ERROR:
+            print(f"{INDENT}could not run: {entry.evidence.result.error}")
+        for violation in entry.evidence.result.violations:
+            print(f"{INDENT}{violation.file}:{violation.line}")
+            print(f"{INDENT}  {violation.source_module} -> {violation.target_module}")
+            print(f"{INDENT}  {violation.reason}")
+
+    _print_provenance(entry)
+    print()
+
+
+def _print_trailer(status) -> None:
+    print(f"PATH STATUS   {status.path_status}")
+
+    if status.path_status == status_mod.INCOMPLETE:
+        print()
+        print("Nothing verified yet. Run: golden-thread verify")
+    elif status.path_status == status_mod.STALE:
+        print()
+        print("Evidence exists but no longer describes this project, so it is")
+        print("not shown as a verdict. Run: golden-thread verify")
+    elif status.path_status == status_mod.OFF_PATH:
+        total = sum(
+            len(e.evidence.result.violations)
+            for e in status.entries
+            if e.evidence is not None
+        )
+        print()
+        print(
+            f"{total} violation(s). This is a signal, not a block: you may stay "
+            "off path deliberately,"
+        )
+        print("but the deviation is now explicit.")
+
+
+def _render(title: str, status) -> None:
+    manifest = status.manifest
+    print(title)
+    print(_line("Version", manifest.ref))
+    print(_line("Revision", manifest.short_revision))
+    print(_line("Profile", manifest.profile))
+    print()
+    for entry in status.entries:
+        _print_entry(entry)
+    _print_trailer(status)
+
+
+def _emit(command: str, title: str, status, as_json: bool) -> int:
+    if as_json:
+        print(report.dumps(command, status))
+    else:
+        _render(title, status)
+    return status.exit_code
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -64,7 +177,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(_line("Version", args.ref))
     print(_line("Revision", revision))
     print(_line("Profile", profile.name))
-    print(_line("Rules", ", ".join(r.id for r in profile.rules) or "none"))
+    print(_line("Requirements", ", ".join(r.id for r in profile.rules) or "none"))
     print()
     print(f"Manifest      {written.relative_to(project)}")
     print("Next          golden-thread verify")
@@ -74,67 +187,16 @@ def cmd_init(args: argparse.Namespace) -> int:
 def cmd_status(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     manifest = manifest_mod.read(project)
-    current = status_mod.compute(project, manifest)
-
-    print("Golden Thread")
-    print(_line("Version", manifest.ref))
-    print(_line("Revision", manifest.short_revision))
-    print(_line("Profile", manifest.profile))
-    print()
-    print(_line("Architecture", current.architecture))
-    print(_line("PATH STATUS", current.path_status))
-
-    if current.path_status == status_mod.INCOMPLETE:
-        print()
-        print("Nothing verified yet. Run: golden-thread verify")
-        return 0
-
-    print()
-    print(f"Last verified {current.verified_at}")
-    if current.failing_rules:
-        print(f"Failing rules {', '.join(current.failing_rules)}")
-        print("Run 'golden-thread verify' for details.")
-        return 1
-    return 0
+    return _emit("status", "Golden Thread", status_mod.compute(project, manifest), args.json)
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     manifest = manifest_mod.read(project)
-    result = verify.run(project, manifest)
-    state.save(project, result)
-
-    print("Golden Thread verify")
-    print(_line("Version", manifest.ref))
-    print(_line("Revision", manifest.short_revision))
-    print(_line("Profile", result.profile))
-    print()
-
-    for rule in result.rules:
-        print(f"{rule.status.ljust(6)} {rule.rule_id}  {rule.title}")
-        if rule.status == ERROR:
-            print(f"       could not run: {rule.error}")
-        for violation in rule.violations:
-            print(f"       {violation.file}:{violation.line}")
-            print(
-                f"         {violation.source_module} -> {violation.target_module}"
-            )
-            print(f"         {violation.reason}")
-        print()
-
-    if result.status == PASS:
-        print(f"PATH STATUS   {status_mod.ON_PATH}")
-        return 0
-
-    total = sum(len(r.violations) for r in result.rules)
-    print(f"PATH STATUS   {status_mod.OFF_PATH}")
-    print()
-    print(
-        f"{total} violation(s). This is a signal, not a block: you may stay "
-        "off path deliberately,"
-    )
-    print("but the deviation is now explicit.")
-    return 1
+    records = verify.run(project, manifest)
+    state.save(project, records)
+    current = status_mod.from_records(manifest, records)
+    return _emit("verify", "Golden Thread verify", current, args.json)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -156,10 +218,12 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--profile", help="profile to use (default: the source's own)")
     init.set_defaults(func=cmd_init)
 
-    status = subparsers.add_parser("status", help="show version, profile and path status")
+    status = subparsers.add_parser("status", help="report the evidence on record")
+    status.add_argument("--json", action="store_true", help="machine-readable report")
     status.set_defaults(func=cmd_status)
 
-    verify_cmd = subparsers.add_parser("verify", help="run the profile's rules")
+    verify_cmd = subparsers.add_parser("verify", help="produce evidence for the profile's requirements")
+    verify_cmd.add_argument("--json", action="store_true", help="machine-readable report")
     verify_cmd.set_defaults(func=cmd_verify)
 
     return parser

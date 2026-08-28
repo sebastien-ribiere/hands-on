@@ -14,8 +14,10 @@ even if a broader allow entry would have covered it.
 
 from pathlib import Path
 
+from .. import subject as subject_mod
 from ..errors import GoldenThreadError
 from ..results import ERROR, FAIL, PASS, RuleResult, Violation
+from ..subject import Subject
 from .importgraph import build_edges, index_modules
 
 NAME = "layered_dependencies"
@@ -37,11 +39,29 @@ def _parse_layers(params: dict) -> list[dict]:
     return layers
 
 
+def _source_root(rule, project: Path) -> Path:
+    return project / rule.params.get("source_root", "src")
+
+
+def subject(rule, project: Path) -> Subject:
+    """The exact files this engine reads, identified by content.
+
+    Never raises for a missing source root: an absent subject is a fact
+    about the subject, and the digest still moves the moment something
+    appears.
+    """
+    root = _source_root(rule, project)
+    modules = index_modules(root) if root.is_dir() else []
+    return subject_mod.identify(project, root, [m.path for m in modules])
+
+
 def run(rule, project: Path) -> RuleResult:
     params = rule.params
+    source_root = _source_root(rule, project)
+    scanned = subject(rule, project)
+
     try:
         layers = _parse_layers(params)
-        source_root = project / params.get("source_root", "src")
         if not source_root.is_dir():
             raise GoldenThreadError(
                 f"source root {params.get('source_root', 'src')!r} does not exist "
@@ -55,14 +75,11 @@ def run(rule, project: Path) -> RuleResult:
 
         edges = build_edges(source_root, modules)
     except GoldenThreadError as exc:
-        return RuleResult(
-            rule_id=rule.id, title=rule.title, status=ERROR, error=str(exc)
-        )
+        return RuleResult(status=ERROR, subject=scanned, error=str(exc))
     except SyntaxError as exc:
         return RuleResult(
-            rule_id=rule.id,
-            title=rule.title,
             status=ERROR,
+            subject=scanned,
             error=f"could not parse {exc.filename}: {exc.msg} (line {exc.lineno})",
         )
 
@@ -108,9 +125,7 @@ def run(rule, project: Path) -> RuleResult:
 
     violations.sort(key=lambda v: (v.file, v.line))
     return RuleResult(
-        rule_id=rule.id,
-        title=rule.title,
         status=FAIL if violations else PASS,
+        subject=scanned,
         violations=violations,
-        scanned_files=len(modules),
     )

@@ -42,4 +42,14 @@ def test_the_cli_runs_with_no_installed_package():
     """Proven by the fact that these tests import it from src/ alone."""
     import golden_thread
 
-    assert golden_thread.__version__ == "0.1.0"
+    assert golden_thread.__version__
+
+
+def test_the_producer_version_is_the_package_version():
+    """Evidence names its producer; that name must not drift from the code."""
+    import golden_thread
+    from golden_thread import evidence
+
+    pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+    assert f'version = "{golden_thread.__version__}"' in pyproject
+    assert evidence.PRODUCER_NAME == "golden-thread"

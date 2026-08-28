@@ -8,7 +8,7 @@ MANIFEST_NAME = "golden-thread.json"
 # Not committed. Cache + recorded evidence, both reproducible from the manifest.
 WORK_DIR_NAME = ".golden-thread"
 SOURCE_DIR_NAME = "source"
-STATE_NAME = "state.json"
+EVIDENCE_NAME = "evidence.json"
 
 
 def manifest_path(project: Path) -> Path:
@@ -23,5 +23,5 @@ def source_dir(project: Path) -> Path:
     return work_dir(project) / SOURCE_DIR_NAME
 
 
-def state_path(project: Path) -> Path:
-    return work_dir(project) / STATE_NAME
+def evidence_path(project: Path) -> Path:
+    return work_dir(project) / EVIDENCE_NAME

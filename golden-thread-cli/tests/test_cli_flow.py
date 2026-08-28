@@ -4,7 +4,7 @@ import json
 import subprocess
 
 from golden_thread import manifest as manifest_mod
-from golden_thread.paths import source_dir, state_path
+from golden_thread.paths import evidence_path, source_dir
 
 
 def _run(cli, *args):
@@ -56,7 +56,8 @@ def test_status_is_incomplete_before_any_verify(cli, corporate_source, spellbook
     out = capsys.readouterr().out
     assert "Version       v0.1.0" in out
     assert "Profile       academy-spells" in out
-    assert "Architecture  UNKNOWN" in out
+    assert "UNKNOWN ARCH-001" in out
+    assert "never verified" in out
     assert "PATH STATUS   INCOMPLETE" in out
 
 
@@ -97,10 +98,10 @@ def test_status_reports_recorded_evidence(cli, corporate_source, spellbook):
          "--source", str(corporate_source), "--ref", "v0.1.0")
     _run(cli, "-C", str(spellbook), "verify")
 
-    recorded = json.loads(state_path(spellbook).read_text())["lastVerification"]
-    assert recorded["status"] == "PASS"
-    assert recorded["revision"] == manifest_mod.read(spellbook).revision
-    assert recorded["rules"][0]["id"] == "ARCH-001"
+    recorded = json.loads(evidence_path(spellbook).read_text())["evidence"]
+    assert [e["requirement"] for e in recorded] == ["ARCH-001"]
+    assert recorded[0]["result"]["status"] == "PASS"
+    assert recorded[0]["method"]["policyRevision"] == manifest_mod.read(spellbook).revision
 
 
 def test_cache_is_restored_from_the_manifest_alone(cli, corporate_source, spellbook):
