@@ -11,6 +11,10 @@ anywhere. A status is only ever reported together with the *evidence* it came
 from — and evidence that no longer describes the code is reported as **STALE**
 rather than quietly reused.
 
+**Spike 3** adds a minimal Claude Code adapter, proving the core is usable
+from inside a real Claude Code session without moving any Golden Thread logic
+into Claude Code. See [`claude-code-adapter/README.md`](claude-code-adapter/README.md).
+
 No workflow engine. No AI agent. No CI. No server. Python standard library only.
 
 ## The rule under test
@@ -115,6 +119,13 @@ kind of lie this spike exists to remove.
     demo-spellbook/          a consumer project
       golden-thread.json       the manifest: minimal, 5 fields
       .golden-thread/          disposable: policy cache + recorded evidence
+      .claude/settings.json     registers the Claude Code adapter's hooks
+
+    claude-code-adapter/     Spike 3 — harness-specific glue, isolated from the core
+      hooks/session_start.py   shows Golden Thread context at session start
+      hooks/pre_tool_use.py    signals OFF PATH/STALE before Edit/Write, never blocks
+      lib/                     the only code that shells out to `golden-thread`
+      tests/
 
     demo/                    the demonstration
 
