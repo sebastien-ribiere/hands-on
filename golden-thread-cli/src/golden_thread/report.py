@@ -42,3 +42,8 @@ def build(command: str, status: Status) -> dict[str, Any]:
 
 def dumps(command: str, status: Status) -> str:
     return json.dumps(build(command, status), indent=2)
+
+
+def json_dumps(document: dict[str, Any]) -> str:
+    """The same JSON conventions, for the documents that are not a status."""
+    return json.dumps(document, indent=2)

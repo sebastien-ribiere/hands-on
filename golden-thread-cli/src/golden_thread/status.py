@@ -2,15 +2,23 @@
 
   INCOMPLETE  nothing has been verified yet
   ON PATH     every requirement has current, passing evidence
+  NOT READY   a readiness requirement is not satisfied: the work was not
+              agreed before it started
   OFF PATH    a requirement failed, on evidence that still applies
   STALE       evidence exists but no longer describes this code or this policy
 
-Order of precedence, most definite fact first: a confirmed failure is a fact
-and outranks staleness; unknown outranks a comfortable assumption. ON PATH is
-only claimed when every requirement is both current and passing.
+Order of precedence, and why NOT READY sits above OFF PATH: a readiness
+requirement is a precondition on the work itself. Announcing "the code you
+wrote has an architecture violation" while the mission was never agreed answers
+the second question first. Both requirements are still listed individually --
+nothing is hidden, only the headline changes.
 
-OFF PATH is a signal, not a gate. Golden Thread reports a deviation; it does
-not prevent one.
+Below that, the original rule stands: a confirmed failure is a fact and
+outranks staleness; unknown outranks a comfortable assumption. ON PATH is only
+claimed when every requirement is both current and passing.
+
+Neither NOT READY nor OFF PATH is a gate. Golden Thread reports; it does not
+prevent. A Definition of Ready that blocked would be a different tool.
 """
 
 from dataclasses import dataclass
@@ -24,9 +32,10 @@ from .results import ERROR, FAIL, UNKNOWN
 INCOMPLETE = "INCOMPLETE"
 ON_PATH = "ON PATH"
 OFF_PATH = "OFF PATH"
+NOT_READY = "NOT READY"
 STALE = "STALE"
 
-EXIT_CODES = {ON_PATH: 0, INCOMPLETE: 0, OFF_PATH: 1, STALE: 3}
+EXIT_CODES = {ON_PATH: 0, INCOMPLETE: 0, OFF_PATH: 1, STALE: 3, NOT_READY: 4}
 
 
 @dataclass(frozen=True)
@@ -37,6 +46,7 @@ class Entry:
     title: str
     evidence: Evidence | None
     freshness: Freshness
+    kind: str = checks.CODE
 
     @property
     def reported_status(self) -> str:
@@ -62,11 +72,16 @@ class Status:
 def _aggregate(entries: list[Entry]) -> str:
     if not entries or all(e.evidence is None for e in entries):
         return INCOMPLETE
-    if any(
-        e.freshness.is_fresh and e.evidence.result.status in (FAIL, ERROR)
+    failing = [
+        e
         for e in entries
         if e.evidence is not None
-    ):
+        and e.freshness.is_fresh
+        and e.evidence.result.status in (FAIL, ERROR)
+    ]
+    if any(e.kind == checks.READINESS for e in failing):
+        return NOT_READY
+    if failing:
         return OFF_PATH
     if any(not e.freshness.is_fresh for e in entries):
         return STALE
@@ -100,6 +115,7 @@ def compute(project: Path, manifest: Manifest) -> Status:
                 title=rule.title,
                 evidence=record,
                 freshness=freshness,
+                kind=engine.kind,
             )
         )
 
@@ -116,6 +132,7 @@ def from_records(manifest: Manifest, records: list[Evidence]) -> Status:
             freshness=Freshness(
                 state=FRESH, reasons=(), current_subject=record.subject
             ),
+            kind=checks.kind_of(record.method.check),
         )
         for record in records
     ]

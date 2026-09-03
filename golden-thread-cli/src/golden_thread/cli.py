@@ -9,6 +9,7 @@ Exit codes:
   1  OFF PATH: a requirement failed on evidence that still applies
   2  the command itself could not run
   3  STALE: evidence exists but no longer describes this project
+  4  NOT READY: a readiness requirement is not satisfied
 """
 
 import argparse
@@ -16,7 +17,8 @@ import sys
 from pathlib import Path
 
 from . import manifest as manifest_mod
-from . import policy, report, source, state, status as status_mod, verify
+from . import policy, readiness, report, source, state, status as status_mod, verify
+from .attestation import APPROVED, ASSESSMENT, REJECTED
 from .errors import GoldenThreadError
 from .paths import WORK_DIR_NAME
 from .results import ERROR
@@ -74,6 +76,11 @@ def _print_provenance(entry) -> None:
             f"{INDENT}subject   {subject.root}/ - {_describe(subject)}"
             f"{_git_note(subject)}"
         )
+    # A requirement satisfied by claims made elsewhere never appears without
+    # them: the assessment and the human decision are part of the provenance,
+    # not a detail behind a --verbose flag.
+    for claim in evidence.result.supporting:
+        print(f"{INDENT}rests on  {claim.kind}: {claim.summary()}")
     print(f"{INDENT}method    {evidence.method}")
     print(f"{INDENT}producer  {evidence.producer}")
     print(f"{INDENT}recorded  {evidence.timestamp}")
@@ -101,6 +108,10 @@ def _print_entry(entry) -> None:
             print(f"{INDENT}{violation.file}:{violation.line}")
             print(f"{INDENT}  {violation.source_module} -> {violation.target_module}")
             print(f"{INDENT}  {violation.reason}")
+        # Printed for PASS as much as for FAIL: a verdict is never shown
+        # without the reason it is that verdict.
+        for note in entry.evidence.result.notes:
+            print(f"{INDENT}- {note}")
 
     _print_provenance(entry)
     print()
@@ -116,6 +127,13 @@ def _print_trailer(status) -> None:
         print()
         print("Evidence exists but no longer describes this project, so it is")
         print("not shown as a verdict. Run: golden-thread verify")
+    elif status.path_status == status_mod.NOT_READY:
+        print()
+        print("A readiness requirement is not satisfied: this work was not agreed")
+        print("before it started. Like every other Golden Thread signal, it is a")
+        print("signal -- nothing here stops you writing code. It states that the")
+        print("Definition of Ready has not been met, and by whose account.")
+        print("Next          golden-thread readiness rubric")
     elif status.path_status == status_mod.OFF_PATH:
         total = sum(
             len(e.evidence.result.violations)
@@ -199,6 +217,155 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return _emit("verify", "Golden Thread verify", current, args.json)
 
 
+def _readiness_target(args: argparse.Namespace):
+    project = Path(args.project).resolve()
+    manifest = manifest_mod.read(project)
+    return project, readiness.resolve(project, manifest, args.requirement)
+
+
+def cmd_readiness_rubric(args: argparse.Namespace) -> int:
+    """Publish the rubric, so an assessment is made against policy, not habit."""
+    _, target = _readiness_target(args)
+    rubric = target.rubric
+
+    if args.json:
+        print(
+            report.json_dumps(
+                {
+                    "requirement": target.rule.id,
+                    "title": target.rule.title,
+                    "rubric": rubric.ref,
+                    "rubricTitle": rubric.title,
+                    "scaleMax": rubric.scale_max,
+                    "caveat": rubric.caveat,
+                    "thresholds": {
+                        "minScore": target.rule.params.get("min_score", 8),
+                        "maxBlockers": target.rule.params.get("max_blockers", 0),
+                        "requiresHumanApproval": target.rule.params.get(
+                            "requires_human_approval", True
+                        ),
+                    },
+                    "subject": target.subject.to_dict(),
+                    "subjectFiles": target.rule.params.get("subject_files", []),
+                    "dimensions": [
+                        {
+                            "id": d.id,
+                            "title": d.title,
+                            "points": d.points,
+                            "asks": d.asks,
+                        }
+                        for d in rubric.dimensions
+                    ],
+                    "requiredSections": list(readiness.REQUIRED_SECTIONS),
+                }
+            )
+        )
+        return 0
+
+    print(f"{target.rule.id}  {target.rule.title}")
+    print(_line("Rubric", f"{rubric.ref}  {rubric.title}"))
+    print(_line("Subject", f"{_describe(target.subject)}"))
+    print()
+    for dimension in rubric.dimensions:
+        print(f"  {dimension.id}  ({dimension.points} pt)  {dimension.title}")
+        if dimension.asks:
+            for line in dimension.asks.splitlines():
+                print(f"      {line}")
+    print()
+    print(_line("Threshold", f"score >= {target.rule.params.get('min_score', 8)}"
+                             f" / {rubric.scale_max}"))
+    print(_line("Blockers", f"at most {target.rule.params.get('max_blockers', 0)}"))
+    print(_line("Approval", "a human decision is required"
+                if target.rule.params.get("requires_human_approval", True)
+                else "not required"))
+    print()
+    print("Required sections in an assessment:")
+    print(f"  {', '.join(readiness.REQUIRED_SECTIONS)}")
+    if rubric.caveat:
+        print()
+        for line in rubric.caveat.splitlines():
+            print(line)
+    return 0
+
+
+def cmd_readiness_assess(args: argparse.Namespace) -> int:
+    """Receive an assessment. The CLI validates its shape; it never scores."""
+    project, target = _readiness_target(args)
+    data = readiness.read_input(args.input)
+    recorded = readiness.record_assessment(project, target, data)
+
+    print(f"{target.rule.id}  assessment recorded")
+    print(_line("Score", f"{recorded.score}/{target.rubric.scale_max}"))
+    print(_line("Rubric", recorded.rubric))
+    print(_line("Assessor", recorded.actor))
+    print(_line("Subject", _describe(recorded.subject)))
+    for section in ("blockers", "decisions"):
+        items = recorded.payload.get(section) or []
+        if items:
+            print()
+            print(f"{section.capitalize()} ({len(items)}):")
+            for index, item in enumerate(items, 1):
+                print(f"  {index}. {item}")
+    print()
+    print("This is one reader's assessment of a document, not a measurement.")
+    print("It satisfies nothing on its own.")
+    print("Next          golden-thread verify")
+    return 0
+
+
+def cmd_readiness_approve(args: argparse.Namespace) -> int:
+    """Record a human decision, having shown that human what they are deciding."""
+    project, target = _readiness_target(args)
+    decision = REJECTED if args.reject else APPROVED
+
+    assessment = state.latest_attestation(project, target.rule.id, ASSESSMENT)
+    if assessment is None:
+        raise GoldenThreadError(
+            "there is no readiness assessment to decide on. "
+            "Run: golden-thread readiness rubric"
+        )
+    if assessment.subject.digest != target.subject.digest:
+        raise GoldenThreadError(
+            "the recorded assessment was made about a different version of the "
+            f"mission ({assessment.subject.short_digest} -> "
+            f"{target.subject.short_digest}). Re-assess before deciding"
+        )
+    if assessment.rubric != target.rubric.ref:
+        raise GoldenThreadError(
+            f"the recorded assessment was made under rubric {assessment.rubric}, "
+            f"and this profile now pins {target.rubric.ref}. Re-assess first"
+        )
+
+    attestor = args.attestor or readiness.default_attestor(project)
+
+    print(f"{target.rule.id}  {target.rule.title}")
+    print(_line("Assessment", f"{assessment.score}/{target.rubric.scale_max} "
+                              f"by {assessment.actor}"))
+    print(_line("Rubric", assessment.rubric))
+    print(_line("Subject", _describe(target.subject)))
+    for section in ("blockers", "decisions"):
+        items = assessment.payload.get(section) or []
+        for index, item in enumerate(items, 1):
+            print(f"  {section[:-1]} {index}. {item}")
+    print(_line("Attestor", attestor))
+    print()
+    print(f"This records that YOU {decision} this mission, on your own reading.")
+    print("The score above is an opinion; it has approved nothing.")
+    print()
+
+    readiness.confirm(target, args.confirm)
+    recorded = readiness.record_decision(
+        project, target, decision, attestor, args.note or ""
+    )
+
+    print()
+    print(f"{target.rule.id}  human attestation recorded")
+    print(_line("Decision", recorded.decision))
+    print(_line("Attestor", recorded.actor))
+    print("Next          golden-thread verify")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="golden-thread",
@@ -225,6 +392,52 @@ def build_parser() -> argparse.ArgumentParser:
     verify_cmd = subparsers.add_parser("verify", help="produce evidence for the profile's requirements")
     verify_cmd.add_argument("--json", action="store_true", help="machine-readable report")
     verify_cmd.set_defaults(func=cmd_verify)
+
+    readiness_cmd = subparsers.add_parser(
+        "readiness",
+        help="the Definition of Ready: publish the rubric, record an "
+             "assessment, record a human decision",
+    )
+    readiness_sub = readiness_cmd.add_subparsers(dest="readiness_command", required=True)
+
+    def _shared(sub):
+        sub.add_argument(
+            "--requirement",
+            help="which readiness requirement (only needed if the profile has "
+                 "more than one)",
+        )
+        return sub
+
+    rubric_cmd = _shared(readiness_sub.add_parser(
+        "rubric", help="print the versioned rubric this profile pins"
+    ))
+    rubric_cmd.add_argument("--json", action="store_true", help="machine-readable rubric")
+    rubric_cmd.set_defaults(func=cmd_readiness_rubric)
+
+    assess_cmd = _shared(readiness_sub.add_parser(
+        "assess", help="record an assessment produced against the rubric"
+    ))
+    assess_cmd.add_argument(
+        "--input", required=True, help="JSON assessment file, or - for stdin"
+    )
+    assess_cmd.set_defaults(func=cmd_readiness_assess)
+
+    approve_cmd = _shared(readiness_sub.add_parser(
+        "approve", help="record a human decision on the recorded assessment"
+    ))
+    approve_cmd.add_argument("--attestor", help="who is deciding (default: git user.email)")
+    approve_cmd.add_argument("--note", help="why, in the attestor's own words")
+    approve_cmd.add_argument(
+        "--reject",
+        action="store_true",
+        help="record a refusal rather than an approval",
+    )
+    approve_cmd.add_argument(
+        "--confirm",
+        help="the confirmation phrase, for use where no terminal is attached. "
+             "Recording an approval this way still records it as yours",
+    )
+    approve_cmd.set_defaults(func=cmd_readiness_approve)
 
     return parser
 

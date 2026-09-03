@@ -138,3 +138,29 @@ def test_unreadable_evidence_is_no_evidence_rather_than_a_verdict(
 
     assert cli(["-C", str(spellbook), "status"]) == 0
     assert "PATH STATUS   INCOMPLETE" in capsys.readouterr().out
+
+
+def test_evidence_written_before_notes_and_supporting_existed_still_loads(
+    cli, corporate_source, spellbook, capsys
+):
+    """Spike 4 added two fields to a result. It did not invalidate Spike 2's files.
+
+    Both are additive and default to empty, so a record written by the earlier
+    CLI is read back as itself rather than being quietly discarded -- which,
+    given `load` treats an unreadable record as no record, would have silently
+    turned a recorded verdict into INCOMPLETE.
+    """
+    _init(cli, corporate_source, spellbook)
+    cli(["-C", str(spellbook), "verify"])
+
+    stored = json.loads(evidence_path(spellbook).read_text())
+    for record in stored["evidence"]:
+        record["result"].pop("notes")
+        record["result"].pop("supporting")
+    evidence_path(spellbook).write_text(json.dumps(stored))
+    capsys.readouterr()
+
+    assert cli(["-C", str(spellbook), "status"]) == 0
+    out = capsys.readouterr().out
+    assert "PATH STATUS   ON PATH" in out
+    assert "PASS   ARCH-001" in out

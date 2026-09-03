@@ -1,0 +1,16 @@
+# Profile: academy-spells-ready
+#
+# The same golden path as academy-spells, with the Academy's Definition of
+# Ready added in front of it.
+#
+# This is the whole point of keeping policy as data: adding a Definition of
+# Ready to a team's golden path is a new profile in this repository and a new
+# tag, not a new version of the CLI. A team moves onto it by changing the ref
+# their project pins.
+
+name = "academy-spells-ready"
+description = "Golden path for Academy spell development, with a Definition of Ready"
+
+# The order is the order requirements are reported in, and it is deliberate:
+# readiness comes before architecture because it comes first in time.
+rules = ["DOR-001", "ARCH-001"]

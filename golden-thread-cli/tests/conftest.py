@@ -4,19 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from golden_thread_testkit import assessment, git, publish_dor  # noqa: F401
+
 SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 REPO = Path(__file__).resolve().parents[2]
-
-
-def git(*args, cwd):
-    subprocess.run(
-        ["git", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false",
-         "-c", "user.name=Test", "-c", "user.email=test@local", *args],
-        cwd=str(cwd), check=True, capture_output=True, text=True,
-    )
 
 
 @pytest.fixture
@@ -48,6 +42,20 @@ def corporate_source(tmp_path):
     git("commit", "-q", "-m", "v0.1.0", cwd=root)
     git("tag", "v0.1.0", cwd=root)
     return root
+
+
+@pytest.fixture
+def dor_source(corporate_source):
+    """A corporate source whose v0.2.0 publishes a Definition of Ready."""
+    return publish_dor(corporate_source)
+
+
+@pytest.fixture
+def mission(spellbook):
+    """A mission document for the readiness requirement to be about."""
+    path = spellbook / "MISSION.md"
+    path.write_text("# Mission: frost ward\n\nAdd a frost ward.\n")
+    return path
 
 
 @pytest.fixture

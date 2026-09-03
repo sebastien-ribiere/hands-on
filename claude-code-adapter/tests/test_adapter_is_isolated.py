@@ -46,3 +46,56 @@ def test_no_hook_ever_returns_a_non_zero_exit_code():
         assert re.search(r"return\s+[1-9]\d*\b", text) is None, (
             f"{path.name} has a code path that could exit non-zero"
         )
+
+
+# --- the skill may assess, and may never approve -----------------------
+
+SKILLS = ADAPTER / "skills"
+FENCE = re.compile(r"```(?:bash|sh|shell)\n(.*?)```", re.DOTALL)
+
+
+def _runnable_commands(text: str) -> str:
+    """Only what the skill actually tells an agent to run.
+
+    Greping the whole file would be useless here: the skill's prohibition
+    against approving necessarily contains the word "approve". What must not
+    exist is an *executable* instruction to approve, so this looks only inside
+    the shell fences.
+    """
+    return "\n".join(FENCE.findall(text))
+
+
+def test_the_skill_never_instructs_an_agent_to_approve():
+    """A readiness score is an assessment; approval is a decision by a person.
+
+    The skill produces the first and must never produce the second. This is
+    the same kind of guard as the ones above: not a convention to be
+    remembered in review, but a test that fails the moment a command that
+    records an approval appears among the ones the skill runs.
+    """
+    for path in SKILLS.glob("*/SKILL.md"):
+        commands = _runnable_commands(path.read_text())
+        assert "approve" not in commands, (
+            f"{path.parent.name} tells an agent to run an approval: "
+            "recording a human decision is not the agent's to run"
+        )
+        assert "--confirm" not in commands, (
+            f"{path.parent.name} tells an agent to supply an approval "
+            "confirmation phrase"
+        )
+
+
+def test_the_skill_says_so_in_words_as_well():
+    """The structural guard above stops the command. This stops the intent."""
+    skill = (SKILLS / "spec-readiness" / "SKILL.md").read_text()
+    assert "Never run `golden-thread readiness approve`" in skill
+    assert "10/10" in skill, "the skill must address the perfect-score case"
+
+
+def test_the_skill_reads_the_rubric_from_the_project_rather_than_from_memory():
+    """A rubric remembered from another project is not this project's policy."""
+    commands = _runnable_commands(
+        (SKILLS / "spec-readiness" / "SKILL.md").read_text()
+    )
+    assert "golden-thread readiness rubric --json" in commands
+    assert "golden-thread readiness assess" in commands

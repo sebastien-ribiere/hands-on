@@ -1,0 +1,50 @@
+{
+  "assessor": "spec-readiness skill (canned for a reproducible demo)",
+  "rubric": "spec-readiness@1.0.0",
+  "score": 9,
+  "dimensions": [
+    {
+      "id": "problem",
+      "score": 2,
+      "note": "Unchanged, and still the strongest part: a real failure mode with named consequences."
+    },
+    {
+      "id": "outcome",
+      "score": 2,
+      "note": "Three acceptance criteria, each checkable from outside, including one that names golden-thread verify."
+    },
+    {
+      "id": "scope",
+      "score": 2,
+      "note": "Both halves now drawn. Retiring the shield misuse is explicitly deferred to another mission, which is what the earlier 'where that makes sense' was hiding."
+    },
+    {
+      "id": "constraints",
+      "score": 2,
+      "note": "ARCH-001 is named, and the mission states why Water satisfies it. That is the constraint that would have caused rework."
+    },
+    {
+      "id": "unknowns",
+      "score": 1,
+      "note": "The remaining unknown is named and genuinely minor. Held at 1 rather than 2 because the decision record states the answers without stating who made them or when."
+    }
+  ],
+  "facts": [
+    "Both decisions raised in the previous assessment now have written answers.",
+    "Water is an allowed dependency for the protection layer under ARCH-001.",
+    "Out-of-scope items are enumerated rather than implied.",
+    "The acceptance criteria include the project's own verification command."
+  ],
+  "assumptions": [
+    "The mission owner who answered the two decisions had the authority to answer them.",
+    "The Academy's element taxonomy still places chill effects with Water."
+  ],
+  "unknowns": [
+    "The exact wording of the string frost_ward.cast() returns."
+  ],
+  "unknownUnknowns": [
+    "Whether a future combined ward will make this module's standalone design awkward to extend."
+  ],
+  "blockers": [],
+  "decisions": []
+}

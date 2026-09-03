@@ -1,0 +1,51 @@
+# DOR-001
+#
+# The Academy's Definition of Ready. A mission is worked on once it has been
+# assessed against a published rubric AND a human has decided, having read
+# that assessment, that the work should start.
+#
+# Both halves are required, and the second is not a formality. The thresholds
+# below are policy, set here and versioned with the rest of the golden path --
+# they are not the CLI's opinion, and an assessor cannot choose them.
+
+id = "DOR-001"
+title = "A mission is Ready before implementation starts"
+rationale = """
+Work that starts from an unclear mission does not fail at the end; it fails
+quietly at the beginning, and the cost surfaces weeks later as rework.
+
+An assessment makes the gaps explicit early and cheaply. It does not make them
+decisions. A model reading a mission produces an opinion about a document --
+useful, structured, arguable, and worth exactly nothing as an authorisation.
+The person accountable for the work is the one who decides it should start,
+and DOR-001 records both facts separately so that neither can be mistaken for
+the other later.
+"""
+
+# Name of the check engine, implemented in the golden-thread CLI. This engine
+# produces no verdict of its own: it reads recorded claims and applies the
+# thresholds below.
+check = "spec_readiness"
+
+[params]
+# The document this requirement is about. It is digested by content, so an
+# approval given to this text does not survive a rewrite of it.
+subject_files = ["MISSION.md"]
+
+# The rubric an assessment must be made against, pinned by version. An
+# assessment recorded under a different version stops applying rather than
+# being quietly reinterpreted.
+rubric = "spec-readiness"
+rubric_version = "1.0.0"
+
+# At or above this score, an assessment is acceptable -- which makes the
+# mission eligible for a human decision, and nothing more.
+min_score = 8
+
+# A mission with an open blocker is not ready at any score. 9/10 with a
+# blocker is still not ready.
+max_blockers = 0
+
+# The half that no score can replace. With this true, DOR-001 cannot pass on
+# an assessment alone, including a perfect one.
+requires_human_approval = true

@@ -15,7 +15,13 @@ rather than quietly reused.
 from inside a real Claude Code session without moving any Golden Thread logic
 into Claude Code. See [`claude-code-adapter/README.md`](claude-code-adapter/README.md).
 
-No workflow engine. No AI agent. No CI. No server. Python standard library only.
+**Spike 4** adds a **Definition of Ready** — the first requirement Golden Thread
+cannot verify by itself. `DOR-001` is satisfied by two claims made elsewhere: an
+assessment produced against a versioned rubric, and a decision made by a person.
+Neither is sufficient alone, and the CLI produces neither.
+
+The core is still stdlib-only Python with no dependency on any AI harness. The
+assessment arrives from outside it; the rubric is data in the corporate policy.
 
 ## The rule under test
 
@@ -27,6 +33,80 @@ This is a genuine dependency rule, not a string match. It is checked against the
 project's real import graph, built with Python's `ast` module — relative imports
 included. `demo-spellbook/src/spells/offense/flame_lance.py` depends on Fire and
 stays compliant, because the rule is scoped to the protection layer.
+
+## The Definition of Ready
+
+    DOR-001
+    A mission is Ready before implementation starts.
+
+Satisfied only when **both** of these hold:
+
+    an assessment scoring >= 8/10 against spec-readiness@1.0.0, with no blockers
+      +
+    a human attestation recording a person's decision
+
+### The score is an assessment, not a measurement
+
+Two assessors reading the same mission against the same rubric will disagree.
+This is not a caveat added by the tool — it is written into the rubric itself,
+in `caveat`, and printed verbatim by `golden-thread readiness rubric`.
+
+It was also observed rather than assumed. On the demo's own mission, under
+`spec-readiness@1.0.0`, the canned assessment in `demo/assessment-initial.json`
+scores **7/10** and a live model session scored the identical document **3/10**,
+raising a decision neither the mission nor the canned assessment had noticed
+(there is no ice element in `src/spells/elements/`). Same rubric, same text,
+different readers, different numbers. That is the normal case.
+
+So a score is never treated as a fact. It is recorded as one named party's
+opinion, with the rubric version it was made under attached, and it makes a
+mission *eligible for a human decision* — nothing more.
+
+### Neither half can stand in for the other
+
+- **No score satisfies DOR-001 alone**, including 10/10. With
+  `requires_human_approval = true`, the engine has no code path that passes on
+  an assessment by itself.
+- **No approval moves the threshold.** `min_score` lives in the corporate
+  policy. A person approving a 7/10 records their approval, and the requirement
+  still reports 7 as below 8.
+- **A blocker beats any score.** `max_blockers = 0` means one open blocker is
+  not ready at 10/10.
+
+### The rubric is versioned twice over
+
+By file name — `rubrics/spec-readiness-1.0.0.toml` — so publishing a revision
+is an added file and a one-line rule change, both visible in a diff. And by the
+`version` field inside it, which every assessment records as
+`spec-readiness@1.0.0`. When a profile later pins `1.1.0`, a recorded
+assessment does not get silently reinterpreted under the new rubric: it stops
+applying, and says which version it was made under.
+
+### Both claims are tied to the text they were made about
+
+An assessment and an approval each record the subject digest of the mission
+document. Edit the mission after approving, and neither claim carries over —
+an approval is given to a text, not to a file name. This is the same mechanism
+Spike 2 built for code, applied unchanged to a Markdown file.
+
+### The approval boundary, stated honestly
+
+`golden-thread readiness approve` prints the assessment, names the attestor,
+and requires a confirmation phrase derived from the subject digest. Without a
+terminal it refuses rather than assumes, directing the caller to `--confirm`.
+
+**This makes approval a deliberate act. It does not prove a human performed
+it**, and nothing on a developer machine can. What it buys is attribution and
+intent: an approval cannot be recorded by accident, cannot be recorded without
+naming who is approving, and cannot be replayed against a different text.
+
+The agent side is enforced separately and structurally: the `spec-readiness`
+skill never runs an approval, and
+`claude-code-adapter/tests/test_adapter_is_isolated.py` parses the shell fences
+out of every `SKILL.md` and fails if `approve` appears among the commands a
+skill tells an agent to run. Verified live: asked to approve on the user's
+explicit authority, the session re-assessed to 9/10 and declined, and no
+`human-attestation` was written.
 
 ## Evidence
 
@@ -80,11 +160,22 @@ about `v0.2.0`'s rules.
 | `INCOMPLETE` | nothing has been verified yet | 0 |
 | `ON PATH` | every requirement has current, passing evidence | 0 |
 | `OFF PATH` | a requirement failed, on evidence that still applies | 1 |
+| `NOT READY` | a readiness requirement is not satisfied | 4 |
 | `STALE` | evidence exists but no longer describes this code or this policy | 3 |
 
-Precedence, most definite fact first: a confirmed failure outranks staleness;
+`NOT READY` outranks `OFF PATH`. A readiness requirement is a precondition on
+the work itself, and announcing "the code you wrote has an architecture
+violation" while the mission was never agreed answers the second question
+first. Both requirements are still listed individually — only the headline
+changes.
+
+Below that, the original rule stands: a confirmed failure outranks staleness;
 unknown outranks a comfortable assumption. `ON PATH` is only claimed when every
 requirement is both current and passing.
+
+`NOT READY` is not a gate either. A Definition of Ready that blocked would be a
+different tool: nothing here stops a developer writing code against an
+un-agreed mission. What it stops is that being *implicit*.
 
 `OFF PATH` is a signal, not a gate. `verify` exits non-zero and says so plainly,
 but nothing here blocks a commit, a build, or a developer. Leaving the golden
@@ -98,7 +189,9 @@ kind of lie this spike exists to remove.
     golden-thread-source/    corporate source of authority — POLICY only, versioned by Git tag
       golden-thread.toml       catalog: schema version, default profile
       profiles/                which rules a profile enforces
-      rules/ARCH-001.toml      the declarative rule
+      rules/ARCH-001.toml      the declarative architecture rule
+      rules/DOR-001.toml       the Definition of Ready: rubric pinned, thresholds set
+      rubrics/spec-readiness-1.0.0.toml   the versioned rubric, with its own caveat
 
     golden-thread-cli/       the tool — ENGINE only, stdlib Python, no harness dependency
       src/golden_thread/
@@ -112,18 +205,25 @@ kind of lie this spike exists to remove.
         status.py              reading evidence, and the path status it implies
         state.py               where records are kept
         report.py              the machine-readable report
+        attestation.py         claims the CLI received rather than produced
+        rubric.py              loading the versioned rubric from the pinned policy
+        readiness.py           publish the rubric, validate an assessment, witness a decision
         checks/importgraph.py  the real import graph
-        checks/layered_dependencies.py   the check engine
+        checks/layered_dependencies.py   the architecture check engine
+        checks/spec_readiness.py         the readiness engine — reads claims, runs no check
       tests/
 
     demo-spellbook/          a consumer project
       golden-thread.json       the manifest: minimal, 5 fields
-      .golden-thread/          disposable: policy cache + recorded evidence
+      MISSION.md               what DOR-001 is about, digested by content
+      .golden-thread/          disposable: policy cache, evidence, attestations
       .claude/settings.json     registers the Claude Code adapter's hooks
+      .claude/skills/          symlink to the adapter's skills
 
     claude-code-adapter/     Spike 3 — harness-specific glue, isolated from the core
       hooks/session_start.py   shows Golden Thread context at session start
-      hooks/pre_tool_use.py    signals OFF PATH/STALE before Edit/Write, never blocks
+      hooks/pre_tool_use.py    signals OFF PATH/STALE/NOT READY before Edit/Write, never blocks
+      skills/spec-readiness/   Spike 4 — the skill that assesses, and may never approve
       lib/                     the only code that shells out to `golden-thread`
       tests/
 
@@ -139,14 +239,19 @@ recorded still applies.
 
 ## Reproducing the demonstration
 
-Everything at once — attach, verify, invalidate, repair:
+Two demonstrations. Spike 1–2 — attach, verify, invalidate, repair:
 
     ./demo/run-demo.sh
 
+Spike 4 — the Definition of Ready, from NOT READY to READY:
+
+    ./demo/run-dor-demo.sh
+
 Or step by step, from the repository root:
 
-    # 0. publish the corporate Golden Thread as a tagged Git repository
-    ./demo/publish-source.sh v0.1.0
+    # 0. publish the corporate Golden Thread as a tagged Git repository.
+    #    v0.1.0 is the golden path before the DoR; v0.2.0 adds it.
+    ./demo/publish-source.sh
 
     # 1. attach the project
     ./golden-thread-cli/bin/golden-thread -C demo-spellbook \
@@ -200,6 +305,64 @@ Or step by step, from the repository root:
 
     git checkout demo-spellbook/src/spells/protection/shield.py
 
+### The Definition of Ready, step by step
+
+    # 1. attach to the profile that enforces a DoR
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook init \
+        --source "$PWD/.demo/golden-thread-source" --ref v0.2.0 \
+        --profile academy-spells-ready
+
+    # 2. nothing assessed, nobody asked
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook verify
+    #    FAIL   DOR-001  A mission is Ready before implementation starts
+    #           - no readiness assessment on record
+    #           - no human approval on record. A readiness score never approves itself.
+    #    PATH STATUS   NOT READY                                exit 4
+
+    # 3. the rubric is policy, published by the golden path
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook readiness rubric
+
+    # 4. an assessment arrives — from the skill, or canned for reproducibility
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook \
+        readiness assess --input demo/assessment-initial.json
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook verify
+    #    FAIL   DOR-001
+    #           - assessed at 7/10, below the 8 this profile requires
+    #           - 2 decision(s) still awaiting a human answer
+    #    PATH STATUS   NOT READY                                exit 4
+
+    # 5. the developer answers the decisions in the mission itself
+    cp demo/mission-clarified.md demo-spellbook/MISSION.md
+
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook verify
+    #    FAIL   DOR-001
+    #           - the assessment was made about a different version of the mission
+    #    PATH STATUS   NOT READY                                exit 4
+
+    # 6. re-assess: 9/10, no blockers, no open decisions — and still not ready
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook \
+        readiness assess --input demo/assessment-clarified.json
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook verify
+    #    FAIL   DOR-001
+    #           - assessed at 9/10 against spec-readiness@1.0.0, at or above the 8 ...
+    #           - no human approval on record.
+    #    PATH STATUS   NOT READY                                exit 4
+
+    # 7. a human decides. Interactive: it prints what is being decided and
+    #    asks for a phrase tied to this exact text.
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook readiness approve
+
+    ./golden-thread-cli/bin/golden-thread -C demo-spellbook verify
+    #    PASS   DOR-001
+    #           - assessed at 9/10 ...   - approved by you@example.com
+    #           - an acceptable score and a human decision were both required;
+    #             neither would have been enough alone
+    #           rests on  assessment: 9/10 by ... under spec-readiness@1.0.0
+    #           rests on  human-attestation: approved by ... under spec-readiness@1.0.0
+    #    PATH STATUS   ON PATH                                  exit 0
+
+    git checkout demo-spellbook/MISSION.md
+
 `golden-thread` is also installable as a normal console script:
 
     pip install -e golden-thread-cli && golden-thread --help
@@ -234,7 +397,7 @@ is still there, but as history — never as the answer.
 
 ## Tests
 
-    python3 -m pytest golden-thread-cli/tests -q
+    python3 -m pytest golden-thread-cli/tests claude-code-adapter/tests -q
 
 ## Exit codes
 
@@ -242,3 +405,4 @@ is still there, but as history — never as the answer.
     1   OFF PATH
     2   the command itself could not run
     3   STALE: evidence exists but no longer describes this project
+    4   NOT READY: a readiness requirement is not satisfied

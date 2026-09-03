@@ -1,0 +1,56 @@
+{
+  "assessor": "spec-readiness skill (canned for a reproducible demo)",
+  "rubric": "spec-readiness@1.0.0",
+  "score": 7,
+  "dimensions": [
+    {
+      "id": "problem",
+      "score": 2,
+      "note": "The problem is real and concrete, and the people who have it are named: casters improvising with shield against cold."
+    },
+    {
+      "id": "outcome",
+      "score": 2,
+      "note": "A named module, a named function with a signature, and a test. Someone outside could tell whether this was done."
+    },
+    {
+      "id": "scope",
+      "score": 1,
+      "note": "In scope is clear. Nothing is declared out of scope, and 'work with the existing wards where that makes sense' is an open invitation to grow."
+    },
+    {
+      "id": "constraints",
+      "score": 1,
+      "note": "No technical constraints stated. The profile enforces ARCH-001 (protection must not depend on Fire), which bears directly on which element a frost ward draws from, and the mission does not acknowledge it."
+    },
+    {
+      "id": "unknowns",
+      "score": 1,
+      "note": "The mission names no open questions, but two exist and need a human answer. Unwritten unknowns are the ones that surface as rework."
+    }
+  ],
+  "facts": [
+    "The target module path is stated: spells.protection.frost_ward.",
+    "The signature is stated: cast(target: str) -> str.",
+    "src/spells/elements/ provides air, water and fire.",
+    "The active profile enforces ARCH-001 on the spells.protection layer."
+  ],
+  "assumptions": [
+    "'Cold damage' means the same thing to the mission owner as it does to the implementer.",
+    "The new spell follows the existing module conventions in src/spells/protection/.",
+    "No caller outside this repository depends on the returned string."
+  ],
+  "unknowns": [
+    "Whether the returned string's wording matters to anyone.",
+    "Whether a test fixture for cold damage already exists elsewhere."
+  ],
+  "unknownUnknowns": [
+    "Whether 'frost' is an existing concept in the Academy's spell taxonomy with rules this mission has not been told about.",
+    "Whether the two apprentice injuries this is reacting to had a cause other than the missing spell."
+  ],
+  "blockers": [],
+  "decisions": [
+    "Which element does a frost ward draw from? Water and Air are both plausible; ARCH-001 forbids Fire outright, so the choice changes whether this mission can be done at all within the current policy.",
+    "Must the frost ward interoperate with the existing shield and ward spells, or does it stand alone? 'Where that makes sense' is not a boundary anyone can implement against."
+  ]
+}

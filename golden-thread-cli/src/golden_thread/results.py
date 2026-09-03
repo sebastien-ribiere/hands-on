@@ -3,11 +3,24 @@
 Deliberately concrete: a rule passed, failed, or could not run, a failure
 carries the exact locations that caused it, and the result carries the subject
 it was produced from. No generic evidence taxonomy.
+
+Two fields are additive and default to empty, so a record written before they
+existed still loads unchanged:
+
+  notes       why this result is what it is, in words, for requirements whose
+              failures are not import-graph shaped ("assessed at 7/10, below
+              the 8 this profile requires"). Printed for PASS as well as FAIL:
+              a verdict without its reason is exactly what this project
+              refuses to emit.
+  supporting  the attestations this result rests on. A requirement satisfied
+              by a model's assessment and a person's approval carries both
+              records here, so the claim can never be read without them.
 """
 
 from dataclasses import dataclass, field
 from typing import Any
 
+from .attestation import Attestation
 from .subject import Subject
 
 PASS = "PASS"
@@ -52,12 +65,16 @@ class RuleResult:
     subject: Subject
     violations: list[Violation] = field(default_factory=list)
     error: str = ""
+    notes: tuple[str, ...] = ()
+    supporting: tuple[Attestation, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
             "violations": [v.to_dict() for v in self.violations],
             "error": self.error or None,
+            "notes": list(self.notes),
+            "supporting": [a.to_dict() for a in self.supporting],
         }
 
     @staticmethod
@@ -67,4 +84,8 @@ class RuleResult:
             subject=subject,
             violations=[Violation.from_dict(v) for v in data.get("violations", [])],
             error=data.get("error") or "",
+            notes=tuple(data.get("notes", [])),
+            supporting=tuple(
+                Attestation.from_dict(a) for a in data.get("supporting", [])
+            ),
         )

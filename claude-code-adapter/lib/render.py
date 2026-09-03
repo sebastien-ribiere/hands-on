@@ -9,6 +9,7 @@ No rule is evaluated here, no threshold is invented here.
 from typing import Any
 
 ON_PATH = "ON PATH"
+NOT_READY = "NOT READY"
 
 
 def _missing_line(requirement: dict[str, Any]) -> str:
@@ -32,6 +33,13 @@ def _missing_line(requirement: dict[str, Any]) -> str:
     error = evidence["result"].get("error") if evidence else None
     if error:
         return f"{req_id} -- could not run: {error}"
+
+    # A requirement whose failure is not import-graph shaped -- a readiness
+    # requirement, say -- explains itself in `notes`. Still the core's own
+    # words: this picks which of them to show, and writes none of its own.
+    notes = evidence["result"].get("notes") if evidence else None
+    if notes:
+        return f"{req_id} -- {'; '.join(notes)}"
 
     return f"{req_id} -- {reported}: {requirement['title']}"
 
@@ -59,12 +67,25 @@ def deviation_lines(report: dict[str, Any] | None) -> list[str] | None:
     None both when there is no Golden Thread here, and when the path is
     clean -- silence is the default; this only ever adds a message, never
     withholds the tool call that triggered it.
+
+    NOT READY gets its own wording. "You are leaving the supported path" is
+    the wrong sentence for a mission nobody agreed to yet: the code is not the
+    problem, and telling a developer their edit deviates would misdescribe
+    what the core actually reported.
     """
     if report is None or report["pathStatus"] == ON_PATH:
         return None
     missing = [
         _missing_line(r) for r in report["requirements"] if r["reportedStatus"] != "PASS"
     ]
+    if report["pathStatus"] == NOT_READY:
+        return [
+            "GOLDEN THREAD -- NOT READY",
+            "This work has not met its Definition of Ready.",
+            *(f"Missing: {m}" for m in missing),
+            "This does not stop you. It does mean nobody has agreed this yet.",
+            "Run: golden-thread readiness rubric",
+        ]
     return [
         "GOLDEN THREAD DEVIATION",
         "You are leaving the supported path.",

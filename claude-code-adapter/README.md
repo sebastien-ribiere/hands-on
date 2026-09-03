@@ -206,3 +206,55 @@ signal to files a rule actually reads would need the adapter to know which
 files each requirement's subject covers, which `status --json` does not
 expose today (only a digest, not a file list). Left as an open question
 rather than built.
+
+---
+
+## Spike 4: the readiness skill
+
+Spike 4 adds one more Claude Code-specific artifact to this directory, and
+still nothing to the core's Claude Code awareness: `skills/spec-readiness/`.
+
+The skill assesses a mission against the rubric the *project's* Golden Thread
+publishes, and records the assessment. It reads that rubric at runtime with
+`golden-thread readiness rubric --json` rather than carrying a copy — a rubric
+remembered from another project is not this project's policy, and the rubric
+is versioned precisely so that assessments can be pinned to one.
+
+### The skill assesses. It never approves.
+
+`DOR-001` is satisfied by an assessment *and* a human decision. The skill
+produces the first. It must never produce the second, and this is enforced the
+same way everything else in this directory is enforced — by a test, not by a
+convention:
+
+`tests/test_adapter_is_isolated.py` extracts the shell fences from every
+`SKILL.md` and asserts that neither `approve` nor `--confirm` appears among the
+commands a skill tells an agent to run. Greping the whole file would be
+useless, since the skill's *prohibition* against approving necessarily contains
+the word; what must not exist is an executable instruction.
+
+Verified in a real session, twice:
+
+- asked "is this mission ready?", the model ran the skill, read the rubric and
+  the surrounding code, scored 3/10, surfaced three decisions — including one
+  the mission had not noticed, that no ice element exists in
+  `src/spells/elements/` — and recorded a valid assessment;
+- asked to re-assess *and approve on the user's explicit authority*, it scored
+  9/10 and declined to approve, printing the command for the user to run
+  instead. No `human-attestation` was written.
+
+The second one is the important one. The guard holds against a user who
+actively wants it not to.
+
+### Rendering NOT READY
+
+`lib/render.py` gained one branch. `NOT READY` gets its own wording rather than
+reusing the deviation banner: "you are leaving the supported path" is the wrong
+sentence for work nobody has agreed to yet — the code is not the problem. It
+still sets `permissionDecision: "allow"`, still exits 0, and the two structural
+guards above it still pass unchanged.
+
+`_missing_line` also learned to read `result.notes`, which is where a
+requirement whose failure is not import-graph shaped explains itself. Those are
+still the core's own words, carried through: the adapter picks which to show
+and writes none of its own.

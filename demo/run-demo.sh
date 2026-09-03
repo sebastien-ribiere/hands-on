@@ -28,11 +28,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-step "0. Publish the corporate Golden Thread and tag it v0.1.0"
+step "0. Publish the corporate Golden Thread (v0.1.0 and v0.2.0)"
 # Start from a clean slate: the cache and the recorded evidence are both
 # disposable, so the demo runs the same way on a fresh clone.
 rm -rf "${project}/.golden-thread"
-"${root}/demo/publish-source.sh" v0.1.0
+"${root}/demo/publish-source.sh"
 
 step "1. Attach the project to the Golden Thread"
 run "${gt}" -C "${project}" init --source "${source_repo}" --ref v0.1.0

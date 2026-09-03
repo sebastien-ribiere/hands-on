@@ -1,0 +1,76 @@
+# Rubric: spec-readiness 1.0.0
+#
+# What the Academy looks at when deciding whether a mission is ready to be
+# worked on. This file is policy: it lives in the corporate Golden Thread and
+# is pinned by the same Git tag as the rules. Publishing 1.1.0 means adding
+# rubrics/spec-readiness-1.1.0.toml and changing one line in a rule -- both
+# visible in a diff, and every assessment already recorded keeps naming 1.0.0.
+
+id = "spec-readiness"
+version = "1.0.0"
+title = "Is this mission ready to be worked on?"
+scale_max = 10
+
+# Printed verbatim by `golden-thread readiness rubric`. It is part of the
+# policy, not a disclaimer bolted on by the tool.
+caveat = """
+This rubric produces an ASSESSMENT, not a measurement.
+
+Two assessors reading the same mission against this same rubric will disagree,
+and the same assessor asked twice may disagree with itself. The dimensions
+below make a score arguable -- they do not make it reproducible, and nothing
+in this rubric should be read as implying that 8/10 is a property of the
+document rather than an opinion about it.
+
+The score exists to structure a conversation with a human being, and to make
+the gaps in a mission explicit before anyone writes code against them. It is
+never, on its own, permission to start.
+"""
+
+[[dimensions]]
+id = "problem"
+title = "The problem, and whose problem it is"
+points = 2
+asks = """
+Is the problem stated, rather than a solution stated in its place?
+Is it clear who currently has this problem?
+"""
+
+[[dimensions]]
+id = "outcome"
+title = "An observable outcome"
+points = 2
+asks = """
+Could someone tell, from the outside, whether this was done?
+Are there acceptance criteria, or only intentions?
+"""
+
+[[dimensions]]
+id = "scope"
+title = "A drawn boundary"
+points = 2
+asks = """
+Is what is IN scope stated?
+Is what is deliberately OUT of scope stated? An unstated boundary is the
+most common cause of a mission growing after it starts.
+"""
+
+[[dimensions]]
+id = "constraints"
+title = "Constraints, including the ones the golden path imposes"
+points = 2
+asks = """
+Are the technical constraints named?
+Does the mission acknowledge the architecture requirements its profile
+enforces, where they bear on the work?
+"""
+
+[[dimensions]]
+id = "unknowns"
+title = "Named unknowns, and no hidden blockers"
+points = 2
+asks = """
+Are the open questions written down rather than left to be discovered?
+Are the decisions that need a human answer separated from the ones the
+implementer can take alone?
+"""

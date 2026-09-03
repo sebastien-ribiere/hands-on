@@ -111,3 +111,58 @@ def run_hook():
         return json.loads(proc.stdout) if proc.stdout.strip() else None
 
     return _run
+
+
+RUBRIC = """
+id = "spec-readiness"
+version = "1.0.0"
+title = "Is this mission ready?"
+scale_max = 10
+caveat = "An assessment, not a measurement."
+
+[[dimensions]]
+id = "problem"
+title = "The problem"
+points = 10
+asks = "Is the problem stated?"
+"""
+
+DOR_RULE = """
+id = "DOR-001"
+title = "A mission is Ready before implementation starts"
+check = "spec_readiness"
+
+[params]
+subject_files = ["MISSION.md"]
+rubric = "spec-readiness"
+rubric_version = "1.0.0"
+min_score = 8
+max_blockers = 0
+requires_human_approval = true
+"""
+
+
+@pytest.fixture
+def attached_with_dor(project, corporate_source):
+    """A project on a profile that enforces a Definition of Ready."""
+    (corporate_source / "rubrics").mkdir()
+    (corporate_source / "rubrics" / "spec-readiness-1.0.0.toml").write_text(RUBRIC)
+    (corporate_source / "rules" / "DOR-001.toml").write_text(DOR_RULE)
+    (corporate_source / "profiles" / "academy-spells-ready.toml").write_text(
+        'name = "academy-spells-ready"\n'
+        'description = "with a DoR"\n'
+        'rules = ["DOR-001", "ARCH-001"]\n'
+    )
+    git("add", "-A", cwd=corporate_source)
+    git("commit", "-q", "-m", "v0.2.0", cwd=corporate_source)
+    git("tag", "v0.2.0", cwd=corporate_source)
+
+    (project / "MISSION.md").write_text("# Mission\n\nAdd a frost ward.\n")
+    result = subprocess.run(
+        [GOLDEN_THREAD_BIN, "-C", str(project), "init",
+         "--source", str(corporate_source), "--ref", "v0.2.0",
+         "--profile", "academy-spells-ready"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    return project
