@@ -1,0 +1,40 @@
+# DOC-001
+#
+# The architecture documentation says which version of the code it describes,
+# and that claim is still true.
+
+id = "DOC-001"
+title = "The documentation describes the code that ships"
+rationale = """
+"The documentation is updated" is easy to put in a Definition of Done and hard
+to mean anything by. Three readings were considered when this rule was written:
+
+  - the document exists, or every function has a docstring. Checkable, and it
+    measures presence rather than currency: a docstring written two years ago
+    passes forever.
+  - the docs changed in the same commit as the code. Makes Git the mechanism,
+    which the golden path deliberately does not do -- a worktree with
+    uncommitted work is not identified by its HEAD.
+  - the document states which code it describes, and that statement is
+    checked. This is the one.
+
+The document carries a stamp naming the digest of the code it describes. The
+engine recomputes that digest and compares. The code moved and the document did
+not: the stamp says so, with both digests.
+
+This proves that somebody re-stamped the document against this exact code. It
+does not prove they read it, and it does not prove the prose is right. The
+stamp costs one command on purpose: a gate expensive enough to resent is a gate
+people route around. What it removes is the silent case, where code ships and
+nobody has even claimed to have looked at the documentation since.
+"""
+
+check = "doc_stamp"
+
+[params]
+# The document that carries the claim.
+document = "docs/ARCHITECTURE.md"
+
+# The code it claims to describe.
+describes = "src"
+describes_globs = ["**/*.py"]

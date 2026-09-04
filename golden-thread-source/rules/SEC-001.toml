@@ -1,0 +1,52 @@
+# SEC-001
+#
+# A real security analyser runs over the project's code, and what it finds at
+# or above the severity the Academy set is a failure.
+#
+# The analyser is bandit, a static analyser for Python. Golden Thread does not
+# reimplement it, wrap its findings in words of its own, or soften them. It
+# runs it, copies the findings out with the analyser's own rule ids and
+# severities, and applies the threshold below.
+
+id = "SEC-001"
+title = "No known security defect at MEDIUM or above"
+rationale = """
+The threshold is the Academy's decision, not the analyser's and not the tool's.
+bandit reports what it finds at LOW, MEDIUM and HIGH; which of those a team is
+held to is a policy question, answered here and versioned with the rest of the
+golden path.
+
+Findings below the threshold are still recorded in the evidence. A scanner
+whose output is filtered before anyone sees it is how a security requirement
+turns into decoration -- the report says how many were set aside and under
+which threshold, so lowering the bar is visible rather than silent.
+
+What this does not claim: that the code is secure. It claims that one named
+analyser, at one named version, found nothing it recognises at or above
+MEDIUM. A static analyser finds what it has rules for.
+"""
+
+check = "security_scan"
+
+[params]
+# The only report format this CLI can read today. An unknown format is an
+# error naming what is supported, never a pass.
+format = "bandit"
+
+# The argv, as a list. `-q` keeps the human-readable chatter out of stdout so
+# the JSON report is all that is there.
+command = ["bandit", "-r", "src", "-f", "json", "-q"]
+
+# What the requirement is about, for freshness. The same root and the same
+# files as ARCH-001, so both requirements report the same subject digest: two
+# rules looking at one body of code, and it is visible that they are.
+subject_root = "src"
+subject_globs = ["**/*.py"]
+
+# The Academy's threshold. A finding at or above this severity is a failure.
+fail_on_severity = "MEDIUM"
+
+# And only when the analyser is not telling us it is guessing.
+min_confidence = "MEDIUM"
+
+timeout_seconds = 120

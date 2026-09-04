@@ -1,0 +1,38 @@
+# TEST-001
+#
+# The project's own test suite runs, and passes.
+#
+# The Academy does not define what a good test is here, and this rule makes no
+# attempt to. It runs the suite the golden path expects every project to have,
+# in the place the golden path expects to find it, and records the exit code.
+
+id = "TEST-001"
+title = "The test suite passes"
+rationale = """
+A Definition of Done that does not include the tests passing is not one.
+
+What this rule claims is narrow, and worth stating so nobody reads more into a
+green tick than is there: a named command ran against a named set of files and
+exited zero. It does not claim the tests are good ones, that they cover the
+change, or that passing means the software works. An empty suite exits zero
+too. Making the suite meaningful is a job for people reviewing each other's
+work -- this rule only removes the case where nobody ran it at all.
+"""
+
+# Name of the check engine, implemented in the golden-thread CLI. The engine
+# runs a command and reads its exit code; it knows nothing about testing.
+check = "external_command"
+
+[params]
+# The argv, as a list. Never a string: no shell is involved, so there is
+# nothing to quote and nothing to expand. The golden path imposes pytest and
+# the tests/ directory the same way it imposes src/.
+command = ["python3", "-m", "pytest", "-q", "tests"]
+
+# A command does not report which files it read, so the policy has to say what
+# this requirement is about. This is the set whose digest decides whether a
+# recorded PASS still describes the project: change a spell or a test, and the
+# recorded result stops applying.
+subject_globs = ["src/**/*.py", "tests/**/*.py"]
+
+timeout_seconds = 120

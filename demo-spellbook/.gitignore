@@ -1,7 +1,24 @@
-# Golden Thread cache and recorded evidence
+# Golden Thread cache and recorded evidence. Disposable: `verify` rebuilds the
+# evidence, the manifest rebuilds the policy cache.
 .golden-thread/
 
-# In a real project the manifest IS committed: it is what pins the golden path
-# for everyone on the team. It is ignored here only because the demo's --source
-# is an absolute path, specific to the machine running the hands-on.
-golden-thread.json
+# golden-thread-attestations.json IS COMMITTED IN A REAL PROJECT, and this line
+# is the exception, not the rule. An attestation is the one artefact nothing
+# can regenerate, and it has to travel to a CI runner that would otherwise
+# report agreed work as un-agreed.
+#
+# It is ignored *here* because this project is a demonstration: its
+# attestations are produced by demo/run-dod-demo.sh against a mission the demo
+# itself rewrites, so a committed snapshot would be stale the moment the demo
+# ran. A real project commits this file and reviews it in the merge request --
+# which is where "who attested what, about which version" belongs.
+golden-thread-attestations.json
+
+# golden-thread.json is NOT ignored, and that is the point: the manifest is
+# what pins the golden path for everyone on the team, including a CI runner
+# with no developer to run `init` for it. It became committable when the
+# manifest learned to hold a source relative to the project -- until then it
+# carried an absolute path specific to one machine.
+
+.pytest_cache/
+__pycache__/

@@ -12,6 +12,13 @@ kind, so a fresh assessment replaces the previous assessment without touching
 the human approval, and vice versa. Two files rather than one because the
 distinction between what this tool proved and what it was told is the whole
 point of keeping them.
+
+They are also in two different *places*, and that is not a filing preference.
+Evidence is disposable: `verify` rebuilds it from the code in front of it. An
+attestation cannot be rebuilt by anything -- it is somebody's word, and the
+only way to get it back is to ask them again. So it sits beside the manifest,
+committed, where it survives a deleted cache and travels to a CI runner that
+would otherwise report agreed work as un-agreed.
 """
 
 import json
@@ -67,7 +74,6 @@ def save_attestation(project: Path, attestation: Attestation) -> Path:
     merged = {(a.requirement, a.kind): a for a in load_attestations(project)}
     merged[(attestation.requirement, attestation.kind)] = attestation
 
-    work_dir(project).mkdir(parents=True, exist_ok=True)
     path = attestations_path(project)
     path.write_text(
         json.dumps(

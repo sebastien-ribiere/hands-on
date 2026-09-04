@@ -51,10 +51,21 @@ class Producer:
 
 @dataclass(frozen=True)
 class Method:
+    """How a result was reached.
+
+    `command` is additive and defaults to empty, so records written before it
+    existed still load. It is the exact argv the policy told the engine to run,
+    and it is part of the method for a plain reason: "external_command" does
+    not describe a method. Running the test suite and running something else
+    are the same engine and different methods, and a reader who is only shown
+    the engine name cannot tell which one produced the verdict.
+    """
+
     check: str
     profile: str
     policy_ref: str
     policy_revision: str
+    command: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -62,6 +73,7 @@ class Method:
             "profile": self.profile,
             "policyRef": self.policy_ref,
             "policyRevision": self.policy_revision,
+            "command": list(self.command),
         }
 
     @staticmethod
@@ -71,11 +83,13 @@ class Method:
             profile=data["profile"],
             policy_ref=data["policyRef"],
             policy_revision=data["policyRevision"],
+            command=tuple(data.get("command", [])),
         )
 
     def __str__(self) -> str:
+        ran = f" [{' '.join(self.command)}]" if self.command else ""
         return (
-            f"{self.check} - {self.profile} - policy {self.policy_ref} "
+            f"{self.check}{ran} - {self.profile} - policy {self.policy_ref} "
             f"@ {self.policy_revision[:12]}"
         )
 

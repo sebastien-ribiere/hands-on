@@ -85,6 +85,81 @@ def publish_dor(source_root, tag="v0.2.0", rubric_version="1.0.0"):
     return source_root
 
 
+DOD_RULES = {
+    "TEST-001": """
+id = "TEST-001"
+title = "The test suite passes"
+check = "external_command"
+
+[params]
+command = ["python3", "-c", "import sys; sys.exit(0)"]
+subject_globs = ["src/**/*.py"]
+""",
+    "SEC-001": """
+id = "SEC-001"
+title = "No known security defect at MEDIUM or above"
+check = "security_scan"
+
+[params]
+format = "bandit"
+command = ["bandit", "-r", "src", "-f", "json", "-q"]
+subject_root = "src"
+subject_globs = ["**/*.py"]
+fail_on_severity = "MEDIUM"
+min_confidence = "MEDIUM"
+""",
+    "DOC-001": """
+id = "DOC-001"
+title = "The documentation describes the code that ships"
+check = "doc_stamp"
+
+[params]
+document = "docs/ARCHITECTURE.md"
+describes = "src"
+describes_globs = ["**/*.py"]
+""",
+    "COOKIE-001": """
+id = "COOKIE-001"
+title = "Cookies were prepared and shared with the team"
+check = "human_attestation"
+
+[params]
+statement = "Cookies have been prepared and shared with the team."
+subject_root = "src"
+subject_globs = ["**/*.py"]
+""",
+}
+
+
+def publish_dod(source_root, rules, profile="academy-spells-done", tag="v0.3.0"):
+    """Add a Definition of Done to an existing corporate source, and tag it.
+
+    `rules` is the profile's requirement list, in order. Ids already published
+    by the source -- ARCH-001 -- are listed rather than rewritten, so a test can
+    mix new requirements with the ones that were always there; ids this helper
+    knows are written out. A test that does not need bandit simply leaves
+    SEC-001 out of the list.
+    """
+    for rule_id in rules:
+        if rule_id in DOD_RULES:
+            (source_root / "rules" / f"{rule_id}.toml").write_text(DOD_RULES[rule_id])
+    listed = ", ".join(f'"{rule_id}"' for rule_id in rules)
+    (source_root / "profiles" / f"{profile}.toml").write_text(
+        f'name = "{profile}"\ndescription = "with a DoD"\nrules = [{listed}]\n'
+    )
+    git("add", "-A", cwd=source_root)
+    git("commit", "-q", "-m", tag, cwd=source_root)
+    git("tag", tag, cwd=source_root)
+    return source_root
+
+
+def rule(rule_id, check, **params):
+    """A Rule object, for testing an engine without a repository around it."""
+    from golden_thread.policy import Rule
+
+    return Rule(id=rule_id, title=rule_id, check=check, params=params)
+
+
 def assessment(score=9, **overrides):
     """A well-formed assessment against the test rubric (4 + 3 + 3 = 10)."""
     problem = min(4, score)

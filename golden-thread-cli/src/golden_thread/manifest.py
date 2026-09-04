@@ -3,6 +3,12 @@
 Deliberately minimal, and deliberately a lockfile: it records both the ref that
 was asked for and the commit that ref actually resolved to. The ref can move.
 The revision cannot.
+
+`source` is stored exactly as it was given. A forge URL is the normal case. A
+*relative* path is resolved against the project directory, which is what lets a
+manifest be committed at all: an absolute path is specific to one machine, and
+a manifest nobody can commit cannot pin anything for anybody else -- least of
+all for a CI runner, which has no developer to run `init` for it.
 """
 
 import json
@@ -13,6 +19,19 @@ from .errors import GoldenThreadError
 from .paths import manifest_path
 
 MANIFEST_VERSION = 1
+
+# Anything with a scheme, or a scp-style Git address, is left alone. Everything
+# else is treated as a path, and a relative one is relative to the project.
+_REMOTE_MARKERS = ("://", "git@", "ssh://")
+
+
+def resolve_source(source: str, project: Path) -> str:
+    if any(marker in source for marker in _REMOTE_MARKERS):
+        return source
+    path = Path(source)
+    if path.is_absolute():
+        return str(path)
+    return str((project / path).resolve())
 
 
 @dataclass(frozen=True)
@@ -36,6 +55,16 @@ class Manifest:
     @property
     def short_revision(self) -> str:
         return self.revision[:12]
+
+    def resolved_source(self, project: Path) -> str:
+        """Where to actually fetch from, for this project on this machine.
+
+        A URL, or an absolute path, is returned unchanged. A relative path is
+        resolved against the project directory rather than the working
+        directory: `golden-thread -C somewhere status` must mean the same thing
+        as running it from inside `somewhere`.
+        """
+        return resolve_source(self.source, project)
 
 
 def write(project: Path, manifest: Manifest) -> Path:

@@ -258,3 +258,50 @@ guards above it still pass unchanged.
 requirement whose failure is not import-graph shaped explains itself. Those are
 still the core's own words, carried through: the adapter picks which to show
 and writes none of its own.
+
+## Spike 5: two more things a skill may never do, and one more shape to render
+
+### The guards, extended
+
+The Definition of Done added two requirements an agent must not satisfy on a
+person's behalf, and both are enforced the same way `approve` is — by parsing
+the shell fences out of every `SKILL.md`:
+
+- **`golden-thread attest`.** An agent recording the cookie attestation would
+  be claiming that a person did something in the physical world. It is a
+  stronger version of the approval case: there, a model at least read the
+  assessment it was signing off; here there is nothing to read.
+- **`golden-thread docs stamp`.** `docs stamp` is deliberately cheap — one
+  command, because a gate expensive enough to resent gets routed around. That
+  reasoning only holds while a person runs it. A skill that stamped after
+  editing code would turn "somebody re-stamped this against this code" into
+  "the tool did", which is a claim about nothing.
+
+Cheap is not the same as automatic, and the difference is the whole content of
+the requirement.
+
+### Rendering a security finding
+
+`lib/render.py` gained a second branch in `_missing_line`. A violation is
+import-graph shaped and renders as `source -> target`; a finding has neither.
+Passing one through the violation path would print an arrow between two fields
+that do not exist — a fabricated fact, in a message a developer is meant to
+trust. So findings render on their own:
+
+    SEC-001 -- src/spells/protection/ward.py:21 MEDIUM B307 (bandit)
+
+Only findings the profile marked `blocking` are surfaced. The rest were
+recorded below that profile's threshold, and repeating them as problems would
+misreport the policy the team is actually held to. The severity and rule id are
+the analyser's own, unchanged — the adapter still writes none of its own words.
+
+`tests/test_security_render.py` pins all of it, including the absence of the
+arrow.
+
+### The pipeline does not use any of this
+
+`.gitlab-ci.yml` runs `golden-thread verify` and never touches this directory.
+That is the point worth stating in the adapter's own README: everything here is
+a *convenience for a session*, and nothing an agent does is load-bearing for
+the verification an organisation actually relies on. The pipeline would run
+identically on a machine where Claude Code has never been installed.

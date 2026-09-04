@@ -1,0 +1,7 @@
+{
+  "manifestVersion": 1,
+  "source": "../.demo/golden-thread-source",
+  "ref": "v0.3.0",
+  "revision": "431a9922febd81dc718d11f44c71292c1dff5032",
+  "profile": "academy-spells-done"
+}

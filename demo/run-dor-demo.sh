@@ -17,17 +17,25 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 gt="${root}/golden-thread-cli/bin/golden-thread"
 project="${root}/demo-spellbook"
-source_repo="${root}/.demo/golden-thread-source"
+# Relative to the project, which is what makes the manifest committable.
+source_repo="../.demo/golden-thread-source"
 mission="${project}/MISSION.md"
+manifest="${project}/golden-thread.json"
 
 step() { printf '\n\033[1m=== %s ===\033[0m\n' "$*"; }
 run()  { printf '$ %s\n' "$*"; set +e; "$@"; local rc=$?; set -e; printf '[exit %s]\n' "${rc}"; return 0; }
 
 cleanup() {
+  [ -f "${manifest}.orig" ] && mv "${manifest}.orig" "${manifest}"
   [ -f "${mission}.orig" ] && mv "${mission}.orig" "${mission}"
   return 0
 }
 trap cleanup EXIT
+
+# The manifest is a committed file now, and these demos re-attach the project
+# to an older tag. Put it back afterwards rather than leaving the repository
+# dirty with a version the demo chose.
+cp "${manifest}" "${manifest}.orig"
 
 step "0. Publish the corporate Golden Thread: v0.1.0, then v0.2.0 which adds the DoR"
 # v0.2.0 adds the academy-spells-ready profile: the same architecture rule as
@@ -99,7 +107,9 @@ step "13. DOR-READY satisfied, and never as a bare verdict"
 run "${gt}" -C "${project}" verify
 
 step "14. The claims on record, with their provenance"
-cat "${project}/.golden-thread/attestations.json"
+# Beside the manifest, not inside .golden-thread/. Everything in the cache is
+# rebuildable; an attestation is somebody's word, and nothing regenerates that.
+cat "${project}/golden-thread-attestations.json"
 
 step "15. The same report, machine-readable -- this is what the adapter reads"
 run "${gt}" -C "${project}" status --json

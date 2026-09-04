@@ -49,7 +49,7 @@ from .subject import Subject
 PROVIDER_HUMAN = "human"
 
 
-def _now() -> str:
+def now() -> str:
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -199,7 +199,7 @@ def record_assessment(
         actor=str(data["assessor"]).strip(),
         rubric=target.rubric.ref,
         subject=target.subject,
-        timestamp=_now(),
+        timestamp=now(),
         payload={
             "score": data["score"],
             "dimensions": data["dimensions"],
@@ -256,22 +256,24 @@ def record_decision(
         actor=attestor,
         rubric=target.rubric.ref,
         subject=target.subject,
-        timestamp=_now(),
+        timestamp=now(),
         payload={"decision": decision, "note": note},
     )
     state.save_attestation(project, attestation)
     return attestation
 
 
-def confirm(target: Target, supplied: str | None) -> None:
-    """Require a deliberate act before an approval is recorded.
+def confirm_phrase(wanted: str, supplied: str | None, refusal: str) -> None:
+    """Require a deliberate act before a claim is recorded.
 
     Refuses rather than assumes when there is no terminal and no explicit
     confirmation: a Definition of Ready that a background job can satisfy by
-    accident is not one. See this module's docstring for what this does and
-    does not prove.
+    accident is not one, and neither is a Definition of Done. See this module's
+    docstring for what this does and does not prove.
+
+    Shared with `attest`, deliberately: two different claims, and exactly one
+    confirmation discipline, so neither can drift into being the lax one.
     """
-    wanted = challenge(target)
     if supplied is not None:
         if supplied.strip() != wanted:
             raise GoldenThreadError(
@@ -281,12 +283,9 @@ def confirm(target: Target, supplied: str | None) -> None:
 
     if not sys.stdin.isatty():
         raise GoldenThreadError(
-            "approval needs a person. There is no terminal attached here, so "
-            "nothing can be typed.\n"
-            f"To record this approval non-interactively, pass: "
-            f"--confirm {wanted!r}\n"
-            "Doing so records that you approved it. It does not make the "
-            "approval anyone else's."
+            f"{refusal}\n"
+            f"To record this non-interactively, pass: --confirm {wanted!r}\n"
+            "Doing so records it as yours. It does not make it anyone else's."
         )
 
     print(f"Type the phrase to confirm: {wanted}")
@@ -296,6 +295,17 @@ def confirm(target: Target, supplied: str | None) -> None:
         typed = ""
     if typed != wanted:
         raise GoldenThreadError("confirmation does not match. Nothing recorded")
+
+
+def confirm(target: Target, supplied: str | None) -> None:
+    confirm_phrase(
+        challenge(target),
+        supplied,
+        refusal=(
+            "approval needs a person. There is no terminal attached here, so "
+            "nothing can be typed."
+        ),
+    )
 
 
 # --- input -------------------------------------------------------------

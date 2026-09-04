@@ -1,0 +1,27 @@
+# Profile: academy-spells-done
+#
+# The whole Academy contract, in one profile: what has to be true before the
+# work starts, and what has to be true before it is called done.
+#
+# There is no separate "Definition of Done" object in Golden Thread, and there
+# does not need to be one. A profile is a list of requirements a team is held
+# to; the DoR and the DoD are that list, read at two different moments. What
+# distinguishes them in a report is not a label in this file but what the
+# engines can do: a readiness requirement reports NOT READY, because the work
+# was never agreed, and everything else reports OFF PATH, because something in
+# the work is not done.
+
+name = "academy-spells-done"
+description = "Academy spell development: Definition of Ready, and Definition of Done"
+
+# The order is the order requirements are reported in, and it is deliberate:
+# readiness first because it comes first in time, then the four things that
+# have to hold before anyone calls a spell finished.
+rules = [
+  "DOR-001",     # ready:  assessed against a rubric, and agreed by a person
+  "TEST-001",    # done:   the test suite passes
+  "ARCH-001",    # done:   the architecture convention holds
+  "SEC-001",     # done:   a real analyser found nothing at MEDIUM or above
+  "DOC-001",     # done:   the documentation says which code it describes
+  "COOKIE-001",  # done:   and somebody made cookies
+]

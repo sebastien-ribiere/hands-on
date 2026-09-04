@@ -42,6 +42,10 @@ def run(project: Path, manifest: Manifest) -> list[Evidence]:
                     profile=profile.name,
                     policy_ref=manifest.ref,
                     policy_revision=manifest.revision,
+                    # Read from the rule, not from the engine: a policy that
+                    # names a command is stating part of the method, and the
+                    # report has to carry what actually ran.
+                    command=tuple(rule.params.get("command", []) or []),
                 ),
                 result=result,
                 timestamp=timestamp,

@@ -4,7 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from golden_thread_testkit import assessment, git, publish_dor  # noqa: F401
+from golden_thread_testkit import (  # noqa: F401
+    assessment,
+    git,
+    publish_dod,
+    publish_dor,
+    rule,
+)
 
 SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:

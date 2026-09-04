@@ -1,0 +1,6 @@
+# The consumer project's own configuration. Golden Thread neither writes nor
+# reads this file: TEST-001 runs `python3 -m pytest -q tests`, and how this
+# project makes that command work is this project's business.
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

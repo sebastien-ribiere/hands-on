@@ -85,6 +85,38 @@ def test_the_skill_never_instructs_an_agent_to_approve():
         )
 
 
+def test_no_skill_instructs_an_agent_to_attest():
+    """The same guard, for the requirement nothing can check.
+
+    An agent that could record the cookie attestation would be claiming that a
+    person did something in the physical world. It is a stronger version of the
+    approval case: there, a model at least read the assessment it was signing
+    off. Here there is nothing to read.
+    """
+    for path in SKILLS.glob("*/SKILL.md"):
+        commands = _runnable_commands(path.read_text())
+        assert "golden-thread attest" not in commands, (
+            f"{path.parent.name} tells an agent to record an attestation: "
+            "a claim about what a person did is not the agent's to make"
+        )
+
+
+def test_no_skill_stamps_documentation_on_a_developers_behalf():
+    """Cheap is not the same as automatic.
+
+    `docs stamp` is deliberately one command, because a gate expensive enough
+    to resent gets routed around. That reasoning only holds while a person runs
+    it: a skill that stamped after editing code would turn the claim "somebody
+    re-stamped this against this code" into "the tool did", which is a claim
+    about nothing.
+    """
+    for path in SKILLS.glob("*/SKILL.md"):
+        commands = _runnable_commands(path.read_text())
+        assert "golden-thread docs stamp" not in commands, (
+            f"{path.parent.name} tells an agent to stamp the documentation"
+        )
+
+
 def test_the_skill_says_so_in_words_as_well():
     """The structural guard above stops the command. This stops the intent."""
     skill = (SKILLS / "spec-readiness" / "SKILL.md").read_text()

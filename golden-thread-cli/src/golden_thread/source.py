@@ -74,7 +74,7 @@ def ensure_available(project: Path, manifest) -> Path:
     dest = source_dir(project)
     if (dest / CATALOG_NAME).exists():
         return dest
-    checkout_revision(manifest.source, manifest.revision, dest)
+    checkout_revision(manifest.resolved_source(project), manifest.revision, dest)
     if not (dest / CATALOG_NAME).exists():
         raise GoldenThreadError(
             f"restored {manifest.source} at {manifest.revision} but found no "

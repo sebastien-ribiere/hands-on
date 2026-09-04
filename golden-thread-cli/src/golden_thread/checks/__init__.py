@@ -17,22 +17,36 @@ and declares one thing about itself: its `kind`.
     READINESS  the engine examines claims made *about* the work before it
                started, and can never reach a verdict alone. A failure means
                the work was not agreed, not that it is broken.
+    ATTESTED   the engine reaches no verdict either: it reports whether a named
+               person made a claim about this version of the work. A failure
+               means a piece of the Definition of Done has not been done --
+               ordinary OFF PATH, unlike READINESS.
 
 The distinction is the engine's to make, not the policy's: whether a check can
 conclude on its own is a property of how it is implemented, and a rule author
 must not be able to claim otherwise in a TOML file. `status` uses it to say
 NOT READY where it would otherwise have said OFF PATH -- two different
-problems that deserve two different sentences.
+problems that deserve two different sentences. The commands use it too: `attest`
+asks the pinned policy which of its rules are attestable rather than knowing
+any requirement id itself.
 """
 
 from dataclasses import dataclass
 from typing import Callable
 
 from ..errors import GoldenThreadError
-from . import layered_dependencies, spec_readiness
+from . import (
+    doc_stamp,
+    external_command,
+    human_attestation,
+    layered_dependencies,
+    security_scan,
+    spec_readiness,
+)
 
 CODE = "code"
 READINESS = "readiness"
+ATTESTED = "attested"
 
 
 @dataclass(frozen=True)
@@ -43,19 +57,17 @@ class Engine:
     kind: str = CODE
 
 
+def _engine(module, kind: str = CODE) -> Engine:
+    return Engine(name=module.NAME, run=module.run, subject=module.subject, kind=kind)
+
+
 _ENGINES = {
-    layered_dependencies.NAME: Engine(
-        name=layered_dependencies.NAME,
-        run=layered_dependencies.run,
-        subject=layered_dependencies.subject,
-        kind=CODE,
-    ),
-    spec_readiness.NAME: Engine(
-        name=spec_readiness.NAME,
-        run=spec_readiness.run,
-        subject=spec_readiness.subject,
-        kind=READINESS,
-    ),
+    layered_dependencies.NAME: _engine(layered_dependencies, CODE),
+    external_command.NAME: _engine(external_command, CODE),
+    security_scan.NAME: _engine(security_scan, CODE),
+    doc_stamp.NAME: _engine(doc_stamp, CODE),
+    spec_readiness.NAME: _engine(spec_readiness, READINESS),
+    human_attestation.NAME: _engine(human_attestation, ATTESTED),
 }
 
 

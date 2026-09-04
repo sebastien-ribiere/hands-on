@@ -1,0 +1,104 @@
+# Golden Thread in GitLab CI.
+#
+# What this pipeline demonstrates, and what it deliberately does not:
+#
+#   * `golden-thread verify` runs here with **no agent involved**. No Claude
+#     Code, no model, no network call to anything that thinks. The same
+#     verification a developer runs locally is replayed by a machine that has
+#     never heard of an AI harness. That independence is the point: evidence
+#     produced by an agent's session would be evidence about that session.
+#
+#   * the pipeline uses the Golden Thread version **pinned for this project**.
+#     It never runs `golden-thread init`, which would re-resolve the tag and
+#     could quietly pick up a moved ref. It restores the exact commit recorded
+#     in the committed manifest, and prints it so a reader of the job log can
+#     see which policy this run was held to.
+#
+#   * the machine-readable report is kept as an artifact, always -- on a red
+#     pipeline as much as on a green one. A verification you cannot read after
+#     the fact is not evidence, it is a colour.
+#
+# On blocking: computing the Golden Thread state and deciding that a given
+# state should stop a merge are two different things, and this file keeps them
+# visibly separate. Step 1 computes and never fails the job on a verdict. Step
+# 3 is this project's policy, in one line, that anybody can read and change.
+# Golden Thread did not decide it. Another project may pin the same policy and
+# choose not to block at all -- that is what "not a prison" means once it
+# reaches a pipeline.
+
+default:
+  image: python:3.12-slim
+  before_script:
+    # git: the CLI restores the pinned policy by cloning it.
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends git
+    # The project's own toolchain, which the policy names: TEST-001 runs
+    # pytest, SEC-001 runs bandit. Pinned, because "a security scan ran" means
+    # little without saying which scanner at which version.
+    - pip install --quiet bandit==1.9.4 pytest==8.3.4
+    # In a real organisation this is a forge URL already on the network, and
+    # these two lines do not exist. Here the corporate golden path is published
+    # locally so the hands-on runs from a fresh clone with nothing else set up.
+    - ./demo/publish-source.sh
+
+variables:
+  # The project held to the golden path. In a real repository this is the
+  # repository itself and this variable does not exist.
+  GT_PROJECT: demo-spellbook
+  # Run the CLI from the source tree. A real project installs a pinned release:
+  #   pip install golden-thread==0.3.0
+  GT: ./golden-thread-cli/bin/golden-thread
+
+stages:
+  - verify
+
+golden-thread:
+  stage: verify
+  script:
+    # --- 1. compute the state ------------------------------------------
+    # Never fails the job on a verdict. A non-zero exit here is a fact to be
+    # recorded, not an outcome to be reacted to yet.
+    - echo "Golden Thread pinned for this project:"
+    - cat "$GT_PROJECT/golden-thread.json"
+    - |
+      set +e
+      $GT -C "$GT_PROJECT" verify --json > golden-thread-report.json
+      gt_exit=$?
+      set -e
+    - $GT -C "$GT_PROJECT" status || true
+
+    # --- 2. say what was computed, and on which policy ------------------
+    - |
+      python3 - <<'PY'
+      import json
+      report = json.load(open("golden-thread-report.json"))
+      gt = report["goldenThread"]
+      print(f"Golden Thread state : {report['pathStatus']} (exit {report['exitCode']})")
+      print(f"Policy              : {gt['ref']} @ {gt['revision'][:12]}")
+      print(f"Profile             : {gt['profile']}")
+      for r in report["requirements"]:
+          print(f"  {r['reportedStatus']:<7} {r['requirement']}  {r['title']}")
+      PY
+
+    # --- 3. this project's policy ---------------------------------------
+    # THIS is the line that decides a merge is blocked. It is a choice made
+    # here, by this project, and it is the only thing in this file that can
+    # fail the pipeline for a Golden Thread reason.
+    - |
+      if [ "$gt_exit" -eq 2 ]; then
+        echo "PIPELINE FAILED: golden-thread could not run at all."
+        echo "This is not a verdict about the code. Nothing was verified."
+      elif [ "$gt_exit" -ne 0 ]; then
+        echo "PIPELINE FAILED BY THIS PROJECT'S POLICY."
+        echo "Golden Thread computed a state and did not ask for this."
+        echo "The line in .gitlab-ci.yml that propagates its exit code did."
+        echo "A project pinning the same golden path may choose otherwise."
+      fi
+    - exit $gt_exit
+
+  artifacts:
+    # `when: always` is not a detail. The run that fails is the run whose
+    # report somebody will want to read.
+    when: always
+    expire_in: 30 days
+    paths:
+      - golden-thread-report.json

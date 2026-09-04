@@ -17,11 +17,21 @@ import sys
 from pathlib import Path
 
 from . import manifest as manifest_mod
-from . import policy, readiness, report, source, state, status as status_mod, verify
-from .attestation import APPROVED, ASSESSMENT, REJECTED
+from . import (
+    attest as attest_mod,
+    docs as docs_mod,
+    policy,
+    readiness,
+    report,
+    source,
+    state,
+    status as status_mod,
+    verify,
+)
+from .attestation import APPROVED, ASSESSMENT, ATTESTED, REFUSED, REJECTED
 from .errors import GoldenThreadError
 from .paths import WORK_DIR_NAME
-from .results import ERROR
+from .results import ERROR, FAIL
 
 LABEL_WIDTH = 14
 INDENT = " " * 7
@@ -108,6 +118,18 @@ def _print_entry(entry) -> None:
             print(f"{INDENT}{violation.file}:{violation.line}")
             print(f"{INDENT}  {violation.source_module} -> {violation.target_module}")
             print(f"{INDENT}  {violation.reason}")
+        # An analyser's findings, in the analyser's own terms. The severity and
+        # the rule id are the tool's, not ours, and the reference is printed so
+        # a reader can go and disagree with it.
+        for finding in entry.evidence.result.findings:
+            below = "" if finding.blocking else "   [below this profile's threshold]"
+            print(f"{INDENT}{finding.file}:{finding.line}{below}")
+            print(
+                f"{INDENT}  {finding.severity} {finding.rule} "
+                f"({finding.analyser}): {finding.message}"
+            )
+            if finding.reference:
+                print(f"{INDENT}  {finding.reference}")
         # Printed for PASS as much as for FAIL: a verdict is never shown
         # without the reason it is that verdict.
         for note in entry.evidence.result.notes:
@@ -135,17 +157,31 @@ def _print_trailer(status) -> None:
         print("Definition of Ready has not been met, and by whose account.")
         print("Next          golden-thread readiness rubric")
     elif status.path_status == status_mod.OFF_PATH:
-        total = sum(
-            len(e.evidence.result.violations)
+        failing = [
+            e
             for e in status.entries
-            if e.evidence is not None
+            if e.evidence is not None and e.reported_status in (FAIL, ERROR)
+        ]
+        # Counted across both lists, and only what this profile treats as a
+        # failure. A requirement can fail with nothing located in the code at
+        # all -- nobody made the cookies -- and reporting "0 violations" under
+        # an OFF PATH headline is the kind of arithmetic that makes a reader
+        # stop trusting the rest of the report.
+        located = sum(
+            len(e.evidence.result.violations)
+            + len([f for f in e.evidence.result.findings if f.blocking])
+            for e in failing
         )
         print()
         print(
-            f"{total} violation(s). This is a signal, not a block: you may stay "
-            "off path deliberately,"
+            f"{len(failing)} requirement(s) not satisfied, {located} located in "
+            "the code."
         )
-        print("but the deviation is now explicit.")
+        print(
+            "This is a signal, not a block: you may stay off path deliberately, "
+            "but the"
+        )
+        print("deviation is now explicit.")
 
 
 def _render(title: str, status) -> None:
@@ -174,7 +210,11 @@ def cmd_init(args: argparse.Namespace) -> int:
         raise GoldenThreadError(f"project directory does not exist: {project}")
 
     dest = project / WORK_DIR_NAME / "source"
-    revision = source.clone_at_ref(args.source, args.ref, dest)
+    # Fetched from the resolved location, recorded exactly as it was given: a
+    # relative source stays relative, so the manifest can be committed.
+    revision = source.clone_at_ref(
+        manifest_mod.resolve_source(args.source, project), args.ref, dest
+    )
     profile_name = args.profile or policy.default_profile_name(dest)
     # Fail at init, not at first verify, if the profile does not exist.
     profile = policy.load_profile(dest, profile_name)
@@ -366,6 +406,67 @@ def cmd_readiness_approve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_attest(args: argparse.Namespace) -> int:
+    """Record a claim nothing can check, having shown what is being claimed."""
+    project = Path(args.project).resolve()
+    manifest = manifest_mod.read(project)
+    target = attest_mod.resolve(project, manifest, args.requirement)
+    decision = REFUSED if args.refuse else ATTESTED
+    attestor = args.attestor or attest_mod.default_actor(project)
+
+    print(f"{target.rule.id}  {target.rule.title}")
+    print(_line("Claim", target.statement))
+    print(_line("Subject", _describe(target.subject)))
+    print(_line("Attestor", attestor))
+
+    if args.show:
+        # What would be asked, without asking it. For a script that has to
+        # supply --confirm, and for anyone who wants to see the claim before
+        # deciding whether they are willing to make it.
+        print(_line("Confirm with", f"--confirm {attest_mod.challenge(target)!r}"))
+        print()
+        print("Nothing was recorded.")
+        return 0
+
+    print()
+    print(f"This records that YOU {decision} this, on your own account.")
+    print("Nothing here checked it. Nothing here can: that is why this")
+    print("requirement is satisfied by a name rather than by a verdict.")
+    print()
+
+    attest_mod.confirm(target, args.confirm)
+    recorded = attest_mod.record(
+        project, target, decision, attestor, args.note or ""
+    )
+
+    print()
+    print(f"{target.rule.id}  attestation recorded")
+    print(_line("Decision", recorded.decision))
+    print(_line("Attestor", recorded.actor))
+    print("Next          golden-thread verify")
+    return 0
+
+
+def cmd_docs_stamp(args: argparse.Namespace) -> int:
+    """Stamp a document with the digest of the code it describes."""
+    project = Path(args.project).resolve()
+    manifest = manifest_mod.read(project)
+    target = docs_mod.resolve(project, manifest, args.requirement)
+    line, changed = docs_mod.stamp(project, target)
+
+    relative = target.document.relative_to(project).as_posix()
+    print(f"{target.rule.id}  {'stamped' if changed else 'already current'}")
+    print(_line("Document", relative))
+    print(_line("Describes", f"{target.describes}/"))
+    print(_line("Stamp", line))
+    print()
+    print("This records that this document was stamped against this exact")
+    print("code. It is not a claim that the documentation is correct: nothing")
+    print("here read it, and nothing here could tell you if it were wrong.")
+    print("Next          golden-thread verify")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="golden-thread",
@@ -438,6 +539,49 @@ def build_parser() -> argparse.ArgumentParser:
              "Recording an approval this way still records it as yours",
     )
     approve_cmd.set_defaults(func=cmd_readiness_approve)
+
+    attest_cmd = subparsers.add_parser(
+        "attest",
+        help="record a claim no tool can check, for a requirement satisfied by "
+             "a person's word",
+    )
+    attest_cmd.add_argument(
+        "requirement",
+        nargs="?",
+        help="which requirement (only needed if the profile has more than one)",
+    )
+    attest_cmd.add_argument("--attestor", help="who is claiming (default: git user.email)")
+    attest_cmd.add_argument("--note", help="anything worth recording alongside it")
+    attest_cmd.add_argument(
+        "--refuse",
+        action="store_true",
+        help="record that this is NOT the case, rather than that it is",
+    )
+    attest_cmd.add_argument(
+        "--confirm",
+        help="the confirmation phrase, for use where no terminal is attached. "
+             "Recording an attestation this way still records it as yours",
+    )
+    attest_cmd.add_argument(
+        "--show",
+        action="store_true",
+        help="print the claim and the confirmation phrase, and record nothing",
+    )
+    attest_cmd.set_defaults(func=cmd_attest)
+
+    docs_cmd = subparsers.add_parser(
+        "docs", help="the documentation requirement: stamp a document"
+    )
+    docs_sub = docs_cmd.add_subparsers(dest="docs_command", required=True)
+    stamp_cmd = docs_sub.add_parser(
+        "stamp", help="record which version of the code this document describes"
+    )
+    stamp_cmd.add_argument(
+        "--requirement",
+        help="which documentation requirement (only needed if the profile has "
+             "more than one)",
+    )
+    stamp_cmd.set_defaults(func=cmd_docs_stamp)
 
     return parser
 

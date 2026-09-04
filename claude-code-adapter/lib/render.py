@@ -30,6 +30,20 @@ def _missing_line(requirement: dict[str, Any]) -> str:
         extra = f" (+{len(violations) - 1} more)" if len(violations) > 1 else ""
         return f"{req_id} -- {v['file']}:{v['line']} {v['sourceModule']} -> {v['targetModule']}{extra}"
 
+    # An analyser's findings are not import-graph shaped: there is no source
+    # and no target, only a location and the analyser's own rule id. Rendering
+    # them through the line above would print a fabricated arrow. Only the
+    # blocking ones are surfaced -- the rest were recorded below this profile's
+    # threshold, and repeating them as problems would misreport the policy.
+    findings = [f for f in (evidence["result"].get("findings") or []) if f["blocking"]] if evidence else []
+    if findings:
+        f = findings[0]
+        extra = f" (+{len(findings) - 1} more)" if len(findings) > 1 else ""
+        return (
+            f"{req_id} -- {f['file']}:{f['line']} {f['severity']} {f['rule']} "
+            f"({f['analyser']}){extra}"
+        )
+
     error = evidence["result"].get("error") if evidence else None
     if error:
         return f"{req_id} -- could not run: {error}"

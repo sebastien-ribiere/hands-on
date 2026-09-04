@@ -13,20 +13,28 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 gt="${root}/golden-thread-cli/bin/golden-thread"
 project="${root}/demo-spellbook"
-source_repo="${root}/.demo/golden-thread-source"
+# Relative to the project, which is what makes the manifest committable.
+source_repo="../.demo/golden-thread-source"
 ward="${project}/src/spells/protection/ward.py"
 shield="${project}/src/spells/protection/shield.py"
+manifest="${project}/golden-thread.json"
 
 step() { printf '\n\033[1m=== %s ===\033[0m\n' "$*"; }
 run()  { printf '$ %s\n' "$*"; set +e; "$@"; local rc=$?; set -e; printf '[exit %s]\n' "${rc}"; return 0; }
 
 cleanup() {
+  [ -f "${manifest}.orig" ] && mv "${manifest}.orig" "${manifest}"
   [ -f "${ward}.orig" ] && mv "${ward}.orig" "${ward}"
   [ -f "${shield}.orig" ] && mv "${shield}.orig" "${shield}"
   rm -f "${project}/NOTES.md"
   return 0
 }
 trap cleanup EXIT
+
+# The manifest is a committed file now, and these demos re-attach the project
+# to an older tag. Put it back afterwards rather than leaving the repository
+# dirty with a version the demo chose.
+cp "${manifest}" "${manifest}.orig"
 
 step "0. Publish the corporate Golden Thread (v0.1.0 and v0.2.0)"
 # Start from a clean slate: the cache and the recorded evidence are both

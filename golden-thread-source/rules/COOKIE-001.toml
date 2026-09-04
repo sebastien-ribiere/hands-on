@@ -1,0 +1,46 @@
+# COOKIE-001
+#
+# Cookies were prepared and shared with the team.
+#
+# Yes, really. Read the rationale before removing it.
+
+id = "COOKIE-001"
+title = "Cookies were prepared and shared with the team"
+rationale = """
+This requirement is absurd on purpose, and it is doing serious work.
+
+Every organisation's Definition of Done contains at least one item that no
+scanner, no test suite and no model can establish: the demo was walked through
+with the right people, the on-call rota was told before the deploy, the
+customer was warned about the migration window, the runbook was rehearsed. They
+are unverifiable in exactly the same way cookies are.
+
+A tool that could only express what it can compute would quietly push those out
+of the Definition of Done -- not by arguing against them, just by having
+nowhere to put them. The ones that fall out that way are rarely the
+unimportant ones.
+
+So this requirement sits in the profile with the same standing as the
+architecture rule, and it is satisfied by an attestation carrying a name. What
+Golden Thread guarantees here is narrow and worth being exact about: that
+somebody said it, who they were, what they were shown when they said it, and
+that they said it about this version of the work. Whether it was true is
+between them and the team.
+
+Choosing cookies rather than a plausible-sounding example is deliberate too.
+Nobody will mistake this for something the tool verified.
+"""
+
+check = "human_attestation"
+
+[params]
+# Printed verbatim by `golden-thread attest`, so the person is shown the claim
+# they are making rather than a requirement id.
+statement = """
+Cookies have been prepared and shared with the team for this delivery.
+"""
+
+# What the attestation is tied to. Ship different code, and the claim about
+# the previous version stops applying -- new work, new cookies.
+subject_root = "src"
+subject_globs = ["**/*.py"]

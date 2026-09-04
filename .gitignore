@@ -5,3 +5,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# The CI artifact, copied out of the job by demo/run-ci-locally.sh so it can be
+# read after the run. GitLab keeps its own copy; this one is a convenience.
+golden-thread-report.json

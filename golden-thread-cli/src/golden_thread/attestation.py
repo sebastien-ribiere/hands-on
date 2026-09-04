@@ -44,6 +44,13 @@ HUMAN_ATTESTATION = "human-attestation"
 APPROVED = "approved"
 REJECTED = "rejected"
 
+# The two decisions a plain attestation can carry. Kept distinct from
+# approved/rejected: approving an assessment somebody else produced and
+# claiming something happened are different acts, and a report that called
+# both "approved" would blur them.
+ATTESTED = "attested"
+REFUSED = "refused"
+
 # Sections an assessment must carry. An assessment that reports only a score
 # is a number without an argument, and is refused at submission.
 REQUIRED_SECTIONS = (
@@ -117,11 +124,17 @@ class Attestation:
         return str(self.payload.get("decision", ""))
 
     def summary(self) -> str:
-        """One line, always naming who made the claim and under which rubric."""
+        """One line, always naming who made the claim.
+
+        A rubric is named when there is one. An attestation made under no
+        rubric -- somebody stating that a thing happened -- says so rather than
+        borrowing the authority of a rubric it was never measured against.
+        """
+        under = f" under {self.rubric}" if self.rubric else " on their own word"
         if self.kind == ASSESSMENT:
             score = "?" if self.score is None else self.score
-            return f"{score}/10 by {self.actor} under {self.rubric}"
-        return f"{self.decision or 'no decision'} by {self.actor} under {self.rubric}"
+            return f"{score}/10 by {self.actor}{under}"
+        return f"{self.decision or 'no decision'} by {self.actor}{under}"
 
 
 def describes(attestation: "Attestation", current: Subject) -> bool:
