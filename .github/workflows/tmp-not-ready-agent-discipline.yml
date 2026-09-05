@@ -1,0 +1,17 @@
+name: Temporary NOT READY agent discipline
+
+on:
+  push:
+    branches: [fix/not-ready-agent-discipline]
+
+jobs:
+  adapter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/not-ready-agent-discipline
+      - name: Run adapter tests
+        run: |
+          python3 -m pip install -q pytest
+          python3 -m pytest claude-code-adapter/tests -q
