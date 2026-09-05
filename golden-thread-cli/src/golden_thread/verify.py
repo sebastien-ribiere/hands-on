@@ -46,6 +46,9 @@ def run(project: Path, manifest: Manifest) -> list[Evidence]:
                     # names a command is stating part of the method, and the
                     # report has to carry what actually ran.
                     command=tuple(rule.params.get("command", []) or []),
+                    requirement_fingerprint=policy.requirement_fingerprint(
+                        source_root, rule
+                    ),
                 ),
                 result=result,
                 timestamp=timestamp,

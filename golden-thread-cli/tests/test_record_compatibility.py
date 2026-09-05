@@ -1,14 +1,8 @@
 """Records written by earlier spikes must still load, unchanged.
 
-Spike 5 added three fields: `findings` on a result, `blocking` on a finding,
-and `command` on a method. Every one of them is additive with an empty default,
-and this module is the thing that keeps that true -- the fixtures below are
-literal Spike 2 and Spike 4 shapes, not records this code generated.
-
-A record that fails to load is silently dropped by state.load, which means the
-symptom of breaking this is not a crash. It is a project reporting INCOMPLETE
-and quietly re-verifying, which is exactly the kind of quiet that this project
-exists to remove.
+New evidence fields stay additive with conservative defaults. A record that
+fails to load is silently dropped by state.load, so compatibility must be
+asserted explicitly.
 """
 
 import json
@@ -75,9 +69,10 @@ def test_a_spike_2_record_still_loads():
     assert record.result.status == "PASS"
 
 
-def test_a_spike_2_method_has_no_command_rather_than_failing():
+def test_a_spike_2_method_has_additive_defaults_rather_than_failing():
     record = Evidence.from_dict(SPIKE_2_RECORD)
     assert record.method.command == ()
+    assert record.method.requirement_fingerprint == ""
     assert "[" not in str(record.method)
 
 
@@ -93,8 +88,6 @@ def test_a_spike_4_record_keeps_its_notes_and_supporting_claims():
 
 
 def test_old_records_survive_a_round_trip_through_the_store(tmp_path):
-    """The failure mode is silence: an unreadable record is dropped, and the
-    project reports INCOMPLETE rather than raising."""
     project = tmp_path / "project"
     project.mkdir()
     (project / ".golden-thread").mkdir()
@@ -110,8 +103,7 @@ def test_old_records_survive_a_round_trip_through_the_store(tmp_path):
 
 
 def test_a_finding_without_blocking_is_read_as_blocking():
-    """The conservative reading: a recorded finding whose file predates the
-    field was one the profile failed on."""
+    """The conservative reading for a finding recorded before the field."""
     finding = Finding.from_dict(
         {
             "file": "src/x.py",
@@ -141,13 +133,14 @@ def test_a_new_record_round_trips_with_everything_on_it():
     assert restored == original
 
 
-def test_a_method_with_a_command_round_trips():
+def test_a_method_with_command_and_requirement_fingerprint_round_trips():
     method = Method(
         check="external_command",
         profile="academy-spells-done",
         policy_ref="v0.3.0",
         policy_revision="d" * 40,
         command=("python3", "-m", "pytest", "-q", "tests"),
+        requirement_fingerprint="sha256:" + "e" * 64,
     )
     assert Method.from_dict(method.to_dict()) == method
     assert "[python3 -m pytest -q tests]" in str(method)

@@ -120,7 +120,7 @@ def test_no_skill_stamps_documentation_on_a_developers_behalf():
 def test_the_skill_says_so_in_words_as_well():
     """The structural guard above stops the command. This stops the intent."""
     skill = (SKILLS / "spec-readiness" / "SKILL.md").read_text()
-    assert "Never run `golden-thread readiness approve`" in skill
+    assert "Never execute `golden-thread readiness approve` on behalf of the user" in skill
     assert "10/10" in skill, "the skill must address the perfect-score case"
 
 

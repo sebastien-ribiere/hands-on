@@ -5,7 +5,7 @@
   NOT READY   a readiness requirement is not satisfied: the work was not
               agreed before it started
   OFF PATH    a requirement failed, on evidence that still applies
-  STALE       evidence exists but no longer describes this code or this policy
+  STALE       evidence exists but no longer describes this code or requirement
 
 Order of precedence, and why NOT READY sits above OFF PATH: a readiness
 requirement is a precondition on the work itself. Announcing "the code you
@@ -108,7 +108,12 @@ def compute(project: Path, manifest: Manifest) -> Status:
                 state=NEVER, reasons=("never verified",), current_subject=current
             )
         else:
-            freshness = evidence_mod.assess(record, current, manifest)
+            freshness = evidence_mod.assess(
+                record,
+                current,
+                policy.requirement_fingerprint(source_root, rule),
+                manifest,
+            )
         entries.append(
             Entry(
                 requirement=rule.id,
