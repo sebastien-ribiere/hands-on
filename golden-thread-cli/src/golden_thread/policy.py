@@ -4,6 +4,8 @@ Everything here is data read from the pinned source tree. No project code and
 no engine logic lives in this module.
 """
 
+import hashlib
+import json
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -94,3 +96,53 @@ def load_rule(source_root: Path, rule_id: str) -> Rule:
         params=data.get("params", {}),
         rationale=data.get("rationale", "").strip(),
     )
+
+
+def requirement_fingerprint(source_root: Path, rule: Rule) -> str:
+    """Identify the requirement itself, independently of profile/tag names.
+
+    Evidence is reusable across a policy/profile move when the requirement it
+    speaks about is unchanged. The fingerprint therefore covers the rule's
+    semantic data and any policy artefact that the rule explicitly pins today
+    (currently the readiness rubric).
+
+    The enclosing profile and Git revision remain provenance, but are not part
+    of this identity: adding COOKIE-001 to a later profile must not invalidate
+    an unchanged DOR-001 assessment/approval.
+    """
+    referenced: list[dict[str, str]] = []
+    rubric_id = rule.params.get("rubric")
+    rubric_version = rule.params.get("rubric_version")
+    if rubric_id or rubric_version:
+        if not rubric_id or not rubric_version:
+            raise GoldenThreadError(
+                f"{rule.id}: rubric and rubric_version must be declared together"
+            )
+        rubric_path = (
+            source_root / "rubrics" / f"{rubric_id}-{rubric_version}.toml"
+        )
+        if not rubric_path.exists():
+            raise GoldenThreadError(
+                f"{rule.id}: referenced rubric does not exist: {rubric_path}"
+            )
+        referenced.append(
+            {
+                "kind": "rubric",
+                "id": str(rubric_id),
+                "version": str(rubric_version),
+                "contentSha256": hashlib.sha256(rubric_path.read_bytes()).hexdigest(),
+            }
+        )
+
+    payload = {
+        "id": rule.id,
+        "title": rule.title,
+        "check": rule.check,
+        "params": rule.params,
+        "rationale": rule.rationale,
+        "referencedArtifacts": referenced,
+    }
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
