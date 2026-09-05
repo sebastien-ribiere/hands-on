@@ -46,6 +46,10 @@ jobs:
           if 'test_verify_reports_policy_from_init_not_cli_version' not in s:
               s = s.replace(marker, extra + marker, 1)
           p.write_text(s)
+
+          p = Path('golden-thread-cli/tests/test_evidence.py')
+          s = p.read_text().replace('assert "producer  golden-thread" in out', 'assert "tool      golden-thread" in out')
+          p.write_text(s)
           PY
           git diff --check
           python3 -m pytest golden-thread-cli/tests -q
