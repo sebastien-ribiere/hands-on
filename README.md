@@ -8,7 +8,7 @@ architecture rule, and goes **OFF PATH** when it breaks it.
 
 **Spike 2** makes every verdict accountable. There is no `architecture: true`
 anywhere. A status is only ever reported together with the *evidence* it came
-from — and evidence that no longer describes the code is reported as **STALE**
+from — and evidence that no longer describes the work or the requirement is reported as **STALE**
 rather than quietly reused.
 
 **Spike 3** adds a minimal Claude Code adapter, proving the core is usable
@@ -230,7 +230,7 @@ stamps, and the engine repeats it in the notes of a `PASS`.
 ### Cookies: the requirement nothing can check
 
 `COOKIE-001` requires that cookies were prepared and shared with the team. It is
-absurd on purpose, and it is doing real work.
+a deliberately unexpected house rule, and it is doing real work.
 
 Every organisation's Definition of Done contains at least one item no scanner,
 test suite or model can establish: the demo was walked through with the right
@@ -272,7 +272,7 @@ are enforced by a test that parses the shell fences out of every skill file.
 
 ## Evidence
 
-One record per requirement, answering five questions and nothing more:
+One record per requirement, answering six questions and nothing more:
 
 | Field | Question | Example |
 |---|---|---|
@@ -313,29 +313,32 @@ and false of the project. The contrast showed up inside a single pipeline run �
 Committing an attestation makes it visible to CI and visible in review. It does
 **not** make it authenticated, and nothing here claims otherwise.
 
-### The subject, and why old evidence cannot be reused
+### Freshness: the work and the requirement, independently
 
-The invalidation mechanism is one thing only:
+Freshness has two independent axes. A record remains current only while both
+the subject it describes and the requirement it answered are unchanged.
 
-> **a `sha256` digest over the sorted `(relative path, sha256(content))` pairs
-> of the exact files the check engine read.**
+The **subject digest** is a `sha256` over the sorted `(relative path,
+sha256(content))` pairs of the exact files the check engine read. `status`
+re-identifies that subject. Editing, adding or removing one of those files makes
+the evidence STALE; changing an unrelated file does not.
 
-`status` re-identifies the subject and compares. Equal, and the record still
-speaks about the code in front of us. Different, and it does not — so it is
-reported as STALE, never as a verdict.
+The **requirement fingerprint** identifies the semantics of the individual
+requirement: its rule data plus policy artefacts it explicitly pins, such as a
+readiness rubric. A move from `v0.2.0` to `v0.3.0`, or from one profile to
+another, does not invalidate evidence merely because the container changed. If
+`DOR-001` and its rubric are unchanged, its evidence can remain current while
+the new profile adds `TEST-001`, `SEC-001`, `DOC-001` and `COOKIE-001`.
 
-The digest covers the three ways a subject can change (content edited, file
-added, file removed). It deliberately covers *nothing else*: editing a README
-does not invalidate an architecture verdict, because false invalidation is how
-a staleness mechanism gets ignored.
+The Git ref, resolved revision and profile are still recorded as provenance.
+They are not the identity of a requirement. For evidence written before
+`requirementFingerprint` existed, Golden Thread keeps the old conservative
+behaviour: a profile or policy revision change makes that legacy record STALE
+because semantic equivalence cannot be established after the fact.
 
-A Git revision is recorded when one is available, but it is **descriptive
-only**. A worktree with uncommitted work is not identified by its HEAD, and a
-project is not always its own repository.
-
-A record is also stale when the **method** changed — a different Golden Thread
-revision, or a different profile. Evidence produced under `v0.1.0` says nothing
-about `v0.2.0`'s rules.
+A Git revision on the subject is descriptive only. A worktree with uncommitted
+work is not identified by its HEAD, and a project is not always its own
+repository.
 
 ## Path status
 
@@ -345,7 +348,7 @@ about `v0.2.0`'s rules.
 | `ON PATH` | every requirement has current, passing evidence | 0 |
 | `OFF PATH` | a requirement failed, on evidence that still applies | 1 |
 | `NOT READY` | a readiness requirement is not satisfied | 4 |
-| `STALE` | evidence exists but no longer describes this code or this policy | 3 |
+| `STALE` | evidence exists but no longer describes the current subject or requirement | 3 |
 
 `NOT READY` outranks `OFF PATH`. A readiness requirement is a precondition on
 the work itself, and announcing "the code you wrote has an architecture
@@ -436,9 +439,10 @@ working tree, and refuses to run at all without Docker rather than substituting
 something that merely resembles the image.
 
 One fidelity gap, stated because it matters for what this proves: GitLab checks
-out a commit, this stages the working tree. The difference shows up for exactly
-one file — `demo-spellbook/golden-thread-attestations.json`, which a real
-project commits and this demo gitignores because every run rewrites it.
+out a commit, while this helper stages the current working tree. For a faithful
+rehearsal, commit the delivery state first — including
+`demo-spellbook/golden-thread-attestations.json`. The helper does not pretend an
+uncommitted working tree is the same thing as a GitLab checkout.
 
 ## Layout
 
@@ -484,7 +488,7 @@ project commits and this demo gitignores because every run rewrites it.
 
     demo-spellbook/          a consumer project
       golden-thread.json       the manifest: committed, and what CI reads
-      golden-thread-attestations.json   committed in a real project — see below
+      golden-thread-attestations.json   committed — human claims travel to CI and review
       MISSION.md               what DOR-001 is about, digested by content
       src/                     the spells
       tests/                   what TEST-001 runs
@@ -506,9 +510,9 @@ Policy and engine are separate on purpose. The corporate repository ships rules
 as data, so a Git tag pins the *policy* a team is held to, independently of the
 tool version they run.
 
-`verify` produces evidence; `status` only reads it. Re-identifying a subject is
-not producing evidence: `status` runs no check, it establishes whether what was
-recorded still applies.
+`verify` produces evidence; `status` only reads it. Re-identifying a subject and
+recomputing a requirement fingerprint are not producing evidence: `status` runs
+no check, it establishes whether what was recorded still applies.
 
 ## Reproducing the demonstration
 
@@ -738,24 +742,28 @@ is still there, but as history — never as the answer.
 
 ## Tests
 
-    python3 -m pytest golden-thread-cli/tests claude-code-adapter/tests -q
+Run the suites separately:
 
-193 tests. One of them runs bandit for real and is skipped — not faked — when
-bandit is not installed: a parser that agrees with its own fixture and
-disagrees with the tool proves nothing. It probes by *running* `bandit
---version` rather than by looking for a file with that name, because a broken
-shim on `PATH` answers `shutil.which` perfectly well.
+    python3 -m pytest golden-thread-cli/tests -q
+    python3 -m pytest claude-code-adapter/tests -q
 
-`test_record_compatibility.py` loads literal Spike 2 and Spike 4 evidence
-shapes. The three fields Spike 5 added — `findings`, `blocking`, `command` —
-are additive with empty defaults, and the symptom of breaking that would not be
-a crash: an unreadable record is silently dropped, and the project quietly
-reports INCOMPLETE.
+Both directories contain a package-less `conftest.py`; combining them in one
+pytest invocation can bind the second suite to fixtures from the first. The
+adapter README documents the same constraint.
+
+The security suite runs bandit for real and skips that integration check — it
+does not fake it — when bandit is not installed. A parser that agrees with its
+own fixture and disagrees with the tool proves nothing.
+
+`test_record_compatibility.py` loads literal older evidence shapes. Additive
+fields such as `findings`, `blocking`, `command` and
+`requirementFingerprint` keep conservative defaults so old records still load;
+legacy records without a fingerprint retain conservative freshness semantics.
 
 ## Exit codes
 
     0   ON PATH, or INCOMPLETE (nothing verified yet)
     1   OFF PATH
     2   the command itself could not run
-    3   STALE: evidence exists but no longer describes this project
+    3   STALE: evidence exists but no longer describes the current subject or requirement
     4   NOT READY: a readiness requirement is not satisfied
