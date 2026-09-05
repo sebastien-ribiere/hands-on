@@ -1,9 +1,9 @@
 """Stale evidence must never be presented as a verdict.
 
-The mechanism under test is the subject digest: an evidence record names the
-exact files it was produced from, and `status` re-identifies them before
-reporting anything. A record that no longer describes this project is reported
-as STALE -- neither ON PATH nor OFF PATH, because neither is known.
+The mechanism under test is the subject digest plus the requirement
+fingerprint: a record becomes stale when the work it describes changed, or
+when the requirement itself changed. Moving the same requirement between tags
+or profiles does not invalidate it.
 """
 
 import json
@@ -106,10 +106,10 @@ def test_a_stale_failure_is_not_reported_as_off_path_either(
 
     assert cli(["-C", str(spellbook), "verify"]) == 1
     capsys.readouterr()
-    assert cli(["-C", str(spellbook), "status"]) == 1  # fresh failure: OFF PATH
+    assert cli(["-C", str(spellbook), "status"]) == 1
     capsys.readouterr()
 
-    ward.write_text(compliant)  # deviation removed, nothing re-verified
+    ward.write_text(compliant)
 
     code, report = _status_json(cli, spellbook, capsys)
     assert code == 3
@@ -123,10 +123,7 @@ def test_a_stale_failure_is_not_reported_as_off_path_either(
 def test_editing_a_file_the_rule_never_read_does_not_invalidate(
     cli, corporate_source, spellbook, capsys
 ):
-    """The digest covers what was inspected, not the whole worktree.
-
-    False invalidation is how a staleness mechanism gets ignored.
-    """
+    """The digest covers what was inspected, not the whole worktree."""
     _attached_and_on_path(cli, corporate_source, spellbook, capsys)
 
     (spellbook / "README.md").write_text("# Spellbook\n\nNotes, not code.\n")
@@ -152,18 +149,17 @@ def test_touching_a_file_without_changing_it_does_not_invalidate(
     assert report["pathStatus"] == "ON PATH"
 
 
-# --- the method changes ------------------------------------------------------
+# --- the requirement changes ------------------------------------------------
 
-def test_moving_to_a_new_golden_thread_version_makes_the_evidence_stale(
+def test_changing_a_requirement_makes_its_evidence_stale(
     cli, corporate_source, spellbook, capsys
 ):
-    """Evidence produced under v0.1.0 says nothing about v0.2.0's rules."""
     _attached_and_on_path(cli, corporate_source, spellbook, capsys)
 
     rule = corporate_source / "rules" / "ARCH-001.toml"
     rule.write_text(rule.read_text().replace('name = "protection"', 'name = "wards"'))
     git("add", "-A", cwd=corporate_source)
-    git("commit", "-q", "-m", "v0.2.0", cwd=corporate_source)
+    git("commit", "-q", "-m", "change ARCH-001", cwd=corporate_source)
     git("tag", "v0.2.0", cwd=corporate_source)
 
     _init(cli, corporate_source, spellbook, ref="v0.2.0")
@@ -173,11 +169,31 @@ def test_moving_to_a_new_golden_thread_version_makes_the_evidence_stale(
     assert code == 3
     assert report["pathStatus"] == "STALE"
     reasons = report["requirements"][0]["freshness"]["reasons"]
-    assert any("Golden Thread version changed" in r for r in reasons)
-    assert not any("the code changed" in r for r in reasons)  # the code did not
+    assert any("the requirement changed" in r for r in reasons)
+    assert not any("the code changed" in r for r in reasons)
 
 
-def test_changing_profile_makes_the_evidence_stale(
+def test_moving_unchanged_requirement_to_new_tag_keeps_evidence_fresh(
+    cli, corporate_source, spellbook, capsys
+):
+    _attached_and_on_path(cli, corporate_source, spellbook, capsys)
+
+    (corporate_source / "NOTES.md").write_text("new policy release, ARCH unchanged\n")
+    git("add", "-A", cwd=corporate_source)
+    git("commit", "-q", "-m", "release v0.2.0", cwd=corporate_source)
+    git("tag", "v0.2.0", cwd=corporate_source)
+
+    _init(cli, corporate_source, spellbook, ref="v0.2.0")
+    capsys.readouterr()
+
+    code, report = _status_json(cli, spellbook, capsys)
+    assert code == 0
+    assert report["pathStatus"] == "ON PATH"
+    assert report["requirements"][0]["freshness"]["state"] == "FRESH"
+    assert report["requirements"][0]["freshness"]["reasons"] == []
+
+
+def test_moving_unchanged_requirement_to_new_profile_keeps_evidence_fresh(
     cli, corporate_source, spellbook, capsys
 ):
     _attached_and_on_path(cli, corporate_source, spellbook, capsys)
@@ -194,9 +210,9 @@ def test_changing_profile_makes_the_evidence_stale(
     capsys.readouterr()
 
     code, report = _status_json(cli, spellbook, capsys)
-    assert code == 3
-    reasons = report["requirements"][0]["freshness"]["reasons"]
-    assert any("profile changed" in r for r in reasons)
+    assert code == 0
+    assert report["pathStatus"] == "ON PATH"
+    assert report["requirements"][0]["freshness"]["state"] == "FRESH"
 
 
 # --- recovering --------------------------------------------------------------
@@ -245,13 +261,15 @@ def test_a_git_revision_is_recorded_when_one_exists_but_is_not_the_mechanism(
     code, report = _status_json(cli, spellbook, capsys)
     subject = report["requirements"][0]["evidence"]["subject"]
     head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=str(spellbook),
-        capture_output=True, text=True, check=True,
+        ["git", "rev-parse", "HEAD"],
+        cwd=str(spellbook),
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
     assert subject["gitRevision"] == head
     assert code == 0
 
-    # Committing unrelated prose moves HEAD but not the subject.
     (spellbook / "NOTES.md").write_text("prose\n")
     git("add", "-A", cwd=spellbook)
     git("commit", "-q", "-m", "notes", cwd=spellbook)
