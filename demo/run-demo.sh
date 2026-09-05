@@ -22,19 +22,24 @@ manifest="${project}/golden-thread.json"
 step() { printf '\n\033[1m=== %s ===\033[0m\n' "$*"; }
 run()  { printf '$ %s\n' "$*"; set +e; "$@"; local rc=$?; set -e; printf '[exit %s]\n' "${rc}"; return 0; }
 
+had_manifest=0
+if [ -f "${manifest}" ]; then
+  cp "${manifest}" "${manifest}.orig"
+  had_manifest=1
+fi
+
 cleanup() {
-  [ -f "${manifest}.orig" ] && mv "${manifest}.orig" "${manifest}"
+  if [ "${had_manifest}" -eq 1 ] && [ -f "${manifest}.orig" ]; then
+    mv "${manifest}.orig" "${manifest}"
+  else
+    rm -f "${manifest}" "${manifest}.orig"
+  fi
   [ -f "${ward}.orig" ] && mv "${ward}.orig" "${ward}"
   [ -f "${shield}.orig" ] && mv "${shield}.orig" "${shield}"
   rm -f "${project}/NOTES.md"
   return 0
 }
 trap cleanup EXIT
-
-# The manifest is a committed file now, and these demos re-attach the project
-# to an older tag. Put it back afterwards rather than leaving the repository
-# dirty with a version the demo chose.
-cp "${manifest}" "${manifest}.orig"
 
 step "0. Publish the corporate Golden Thread (v0.1.0 and v0.2.0)"
 # Start from a clean slate: the cache and the recorded evidence are both

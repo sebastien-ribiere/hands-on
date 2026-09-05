@@ -25,17 +25,22 @@ manifest="${project}/golden-thread.json"
 step() { printf '\n\033[1m=== %s ===\033[0m\n' "$*"; }
 run()  { printf '$ %s\n' "$*"; set +e; "$@"; local rc=$?; set -e; printf '[exit %s]\n' "${rc}"; return 0; }
 
+had_manifest=0
+if [ -f "${manifest}" ]; then
+  cp "${manifest}" "${manifest}.orig"
+  had_manifest=1
+fi
+
 cleanup() {
-  [ -f "${manifest}.orig" ] && mv "${manifest}.orig" "${manifest}"
+  if [ "${had_manifest}" -eq 1 ] && [ -f "${manifest}.orig" ]; then
+    mv "${manifest}.orig" "${manifest}"
+  else
+    rm -f "${manifest}" "${manifest}.orig"
+  fi
   [ -f "${mission}.orig" ] && mv "${mission}.orig" "${mission}"
   return 0
 }
 trap cleanup EXIT
-
-# The manifest is a committed file now, and these demos re-attach the project
-# to an older tag. Put it back afterwards rather than leaving the repository
-# dirty with a version the demo chose.
-cp "${manifest}" "${manifest}.orig"
 
 step "0. Publish the corporate Golden Thread: v0.1.0, then v0.2.0 which adds the DoR"
 # v0.2.0 adds the academy-spells-ready profile: the same architecture rule as
@@ -67,9 +72,6 @@ step "6. Still NOT READY -- and the report says which of the two halves is missi
 run "${gt}" -C "${project}" verify
 
 step "7. The human approves anyway. The score is policy; a signature does not move it."
-# This is the symmetric proof to the one in step 10. A person saying yes does
-# not make a 7 into an 8: the threshold lives in the corporate policy, and
-# approving is not the same act as changing it.
 run "${gt}" -C "${project}" readiness approve \
     --attestor "mission-owner@academy.invalid" \
     --note "Looks fine to me." \
@@ -83,8 +85,6 @@ cp "${root}/demo/mission-clarified.md" "${mission}"
 git --no-pager diff --no-index -- "${mission}.orig" "${mission}" || true
 
 step "9. Both recorded claims were about the OLD text, and neither carries over"
-# The assessment and the approval each recorded the digest of the document
-# they were made about. An approval is given to a text, not to a file name.
 run "${gt}" -C "${project}" verify
 
 step "10. Re-assess the answered mission: 9/10, no blockers, no open decisions"
@@ -94,9 +94,6 @@ step "11. 9/10 and STILL not ready. The score never approves itself."
 run "${gt}" -C "${project}" verify
 
 step "12. A human decides, having been shown exactly what they are deciding"
-# Interactive by default. --confirm exists for scripts like this one, and
-# records the approval as the named attestor's own -- it does not pretend to
-# prove that a person typed it. Nothing on a developer machine can.
 run "${gt}" -C "${project}" readiness approve \
     --attestor "mission-owner@academy.invalid" \
     --note "Both decisions answered; Water satisfies ARCH-001." \
@@ -107,8 +104,6 @@ step "13. DOR-READY satisfied, and never as a bare verdict"
 run "${gt}" -C "${project}" verify
 
 step "14. The claims on record, with their provenance"
-# Beside the manifest, not inside .golden-thread/. Everything in the cache is
-# rebuildable; an attestation is somebody's word, and nothing regenerates that.
 cat "${project}/golden-thread-attestations.json"
 
 step "15. The same report, machine-readable -- this is what the adapter reads"
