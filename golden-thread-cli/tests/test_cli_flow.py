@@ -27,6 +27,26 @@ def test_init_records_the_ref_and_the_resolved_commit(cli, corporate_source, spe
     assert len(manifest.revision) == 40
 
 
+def test_verify_reports_policy_from_init_not_cli_version(
+    cli, corporate_source, spellbook, capsys
+):
+    _run(cli, "-C", str(spellbook), "init",
+         "--source", str(corporate_source), "--ref", "v0.1.0")
+    capsys.readouterr()
+    assert _run(cli, "-C", str(spellbook), "verify") == 0
+    out = capsys.readouterr().out
+    assert "Policy ref    v0.1.0" in out
+    assert "Profile       academy-spells" in out
+    assert "tool      golden-thread 0.3.0" in out
+
+
+def test_init_next_preserves_project(cli, corporate_source, spellbook, capsys):
+    _run(cli, "-C", str(spellbook), "init",
+         "--source", str(corporate_source), "--ref", "v0.1.0")
+    out = capsys.readouterr().out
+    assert f"Next          golden-thread -C {spellbook} verify" in out
+
+
 def test_manifest_stays_minimal(cli, corporate_source, spellbook):
     _run(cli, "-C", str(spellbook), "init",
          "--source", str(corporate_source), "--ref", "v0.1.0")
@@ -54,7 +74,7 @@ def test_status_is_incomplete_before_any_verify(cli, corporate_source, spellbook
 
     assert _run(cli, "-C", str(spellbook), "status") == 0
     out = capsys.readouterr().out
-    assert "Version       v0.1.0" in out
+    assert "Policy ref    v0.1.0" in out
     assert "Profile       academy-spells" in out
     assert "UNKNOWN ARCH-001" in out
     assert "never verified" in out

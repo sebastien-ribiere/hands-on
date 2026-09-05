@@ -3,4 +3,4 @@
 # `pip install -e golden-thread-cli` gives the same command on PATH.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec env PYTHONPATH="${here}/../src${PYTHONPATH:+:$PYTHONPATH}" python3 -m golden_thread "$@"
+exec env GOLDEN_THREAD_SELF="${here}/golden-thread" PYTHONPATH="${here}/../src${PYTHONPATH:+:$PYTHONPATH}" python3 -m golden_thread "$@"
