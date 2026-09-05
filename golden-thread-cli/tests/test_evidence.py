@@ -78,7 +78,7 @@ def test_human_output_carries_the_same_provenance(
     assert "subject   src/" in out
     assert "sha256:" in out
     assert "method    layered_dependencies" in out
-    assert "producer  golden-thread" in out
+    assert "tool      golden-thread" in out
     assert "PATH STATUS   ON PATH" in out
 
 

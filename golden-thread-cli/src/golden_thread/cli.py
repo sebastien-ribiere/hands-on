@@ -13,6 +13,8 @@ Exit codes:
 """
 
 import argparse
+import os
+import shlex
 import sys
 from pathlib import Path
 
@@ -39,6 +41,16 @@ INDENT = " " * 7
 
 def _line(label: str, value: str) -> str:
     return f"{label.ljust(LABEL_WIDTH)}{value}"
+
+
+def _next_command(args: argparse.Namespace, action: str) -> str:
+    """Render a follow-up command that preserves the selected project."""
+    executable = os.environ.get("GOLDEN_THREAD_SELF", "golden-thread")
+    parts = [shlex.quote(executable)]
+    if args.project != ".":
+        parts.extend(["-C", shlex.quote(args.project)])
+    parts.append(action)
+    return " ".join(parts)
 
 
 def _ensure_gitignored(project: Path) -> None:
@@ -92,7 +104,7 @@ def _print_provenance(entry) -> None:
     for claim in evidence.result.supporting:
         print(f"{INDENT}rests on  {claim.kind}: {claim.summary()}")
     print(f"{INDENT}method    {evidence.method}")
-    print(f"{INDENT}producer  {evidence.producer}")
+    print(f"{INDENT}tool      {evidence.producer}")
     print(f"{INDENT}recorded  {evidence.timestamp}")
 
 
@@ -187,8 +199,8 @@ def _print_trailer(status) -> None:
 def _render(title: str, status) -> None:
     manifest = status.manifest
     print(title)
-    print(_line("Version", manifest.ref))
-    print(_line("Revision", manifest.short_revision))
+    print(_line("Policy ref", manifest.ref))
+    print(_line("Policy SHA", manifest.short_revision))
     print(_line("Profile", manifest.profile))
     print()
     for entry in status.entries:
@@ -232,13 +244,13 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     print("Golden Thread attached")
     print(_line("Source", args.source))
-    print(_line("Version", args.ref))
-    print(_line("Revision", revision))
+    print(_line("Policy ref", args.ref))
+    print(_line("Policy SHA", revision))
     print(_line("Profile", profile.name))
     print(_line("Requirements", ", ".join(r.id for r in profile.rules) or "none"))
     print()
     print(f"Manifest      {written.relative_to(project)}")
-    print("Next          golden-thread verify")
+    print(f"Next          {_next_command(args, 'verify')}")
     return 0
 
 
