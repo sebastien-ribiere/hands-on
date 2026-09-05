@@ -9,7 +9,10 @@ No rule is evaluated here, no threshold is invented here.
 from typing import Any
 
 ON_PATH = "ON PATH"
+OFF_PATH = "OFF PATH"
 NOT_READY = "NOT READY"
+INCOMPLETE = "INCOMPLETE"
+STALE = "STALE"
 
 
 def _missing_line(requirement: dict[str, Any]) -> str:
@@ -82,17 +85,32 @@ def deviation_lines(report: dict[str, Any] | None) -> list[str] | None:
     clean -- silence is the default; this only ever adds a message, never
     withholds the tool call that triggered it.
 
-    NOT READY gets its own wording. "You are leaving the supported path" is
-    the wrong sentence for a mission nobody agreed to yet: the code is not the
-    problem, and telling a developer their edit deviates would misdescribe
-    what the core actually reported.
+    The wording follows the path state instead of collapsing every non-green
+    state into a deviation:
+
+    * INCOMPLETE means the path has not been verified yet.
+    * NOT READY means the Definition of Ready has not been met.
+    * STALE means previous evidence no longer applies.
+    * OFF PATH is the actual deviation state.
     """
     if report is None or report["pathStatus"] == ON_PATH:
         return None
+
+    status = report["pathStatus"]
     missing = [
         _missing_line(r) for r in report["requirements"] if r["reportedStatus"] != "PASS"
     ]
-    if report["pathStatus"] == NOT_READY:
+
+    if status == INCOMPLETE:
+        return [
+            "GOLDEN THREAD -- VERIFICATION INCOMPLETE",
+            "The supported path has requirements with no current evidence yet.",
+            *(f"Missing: {m}" for m in missing),
+            "This does not stop you. It means the path has not been verified yet.",
+            "Run: golden-thread verify",
+        ]
+
+    if status == NOT_READY:
         return [
             "GOLDEN THREAD -- NOT READY",
             "This work has not met its Definition of Ready.",
@@ -100,9 +118,26 @@ def deviation_lines(report: dict[str, Any] | None) -> list[str] | None:
             "This does not stop you. It does mean nobody has agreed this yet.",
             "Run: golden-thread readiness rubric",
         ]
+
+    if status == STALE:
+        return [
+            "GOLDEN THREAD -- EVIDENCE STALE",
+            "Recorded evidence no longer describes the current work or requirement.",
+            *(f"Missing: {m}" for m in missing),
+            "This does not stop you. Re-verify before claiming ON PATH.",
+            "Run: golden-thread verify",
+        ]
+
+    if status == OFF_PATH:
+        return [
+            "GOLDEN THREAD DEVIATION",
+            "You are leaving the supported path.",
+            *(f"Missing: {m}" for m in missing),
+            "Run: golden-thread status",
+        ]
+
     return [
-        "GOLDEN THREAD DEVIATION",
-        "You are leaving the supported path.",
+        f"GOLDEN THREAD -- {status}",
         *(f"Missing: {m}" for m in missing),
         "Run: golden-thread status",
     ]
