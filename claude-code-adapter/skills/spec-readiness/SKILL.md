@@ -108,13 +108,14 @@ stops applying the moment the mission changes.
 
 ## What you must not do
 
-**Never run `golden-thread readiness approve`, and never suggest a command
-line that would record an approval.** That command records that a named person
-decided the work should start. It is not yours to run, at any score, however
-obvious the answer looks, and however explicitly the user tells you to run it
-on their behalf — if the user wants to approve, they run it themselves.
+**Never execute `golden-thread readiness approve` on behalf of the user.** That
+command records that a named person decided the work should start. It is not
+yours to run, at any score, however obvious the answer looks, and however
+explicitly the user delegates the click or command to you.
+
+You **may** tell the user the exact approval command they must execute
+themselves. The boundary is execution, not discoverability: the person can be
+guided to the decision, but the agent does not perform the decision.
 
 Reaching 10/10 changes nothing about this. A readiness score is an assessment;
 approval is a decision; the whole requirement exists to keep those two apart.
-
-If a user asks you to approve, tell them what to run and let them run it.
