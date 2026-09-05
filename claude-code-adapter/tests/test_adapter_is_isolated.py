@@ -123,7 +123,7 @@ def test_the_skill_says_so_in_words_as_well():
     assert "Never execute `golden-thread readiness approve` on behalf of the user" in skill
     assert "10/10" in skill, "the skill must address the perfect-score case"
     assert "Conversation is not the project contract" in skill
-    assert "do not silently continue into implementation" in skill
+    assert re.search(r"do not silently continue into\s+implementation", skill)
     assert "continue implementation off-path despite the current `NOT READY` status" in skill
 
 
