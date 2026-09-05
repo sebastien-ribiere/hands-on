@@ -106,6 +106,25 @@ If `decisions` is non-empty, the useful next step is the user answering them
 recorded assessment is tied to the document's content digest, so it correctly
 stops applying the moment the mission changes.
 
+**Conversation is not the project contract.** If the user answers a readiness
+decision only in chat, do not silently treat that answer as resolved for Golden
+Thread and do not carry it into implementation as hidden context. The answer
+must be written into the relevant `subjectFiles` and the changed document must
+be assessed again before it can satisfy the DoR. You may offer to make that
+document change when the user has clearly provided the decision.
+
+If Golden Thread still reports `NOT READY`, **do not silently continue into
+implementation**. The supported next step is to resolve the readiness gaps and
+re-assess. The user may deliberately choose to continue off-path, because
+Golden Thread is not a prison, but that choice must be explicit. If the user
+asks for implementation without explicitly acknowledging the `NOT READY`
+state, present the two options and ask them to choose:
+
+1. resolve the DoR and re-assess;
+2. continue implementation off-path despite the current `NOT READY` status.
+
+An answer to a readiness question is not, by itself, consent to option 2.
+
 ## What you must not do
 
 **Never execute `golden-thread readiness approve` on behalf of the user.** That
