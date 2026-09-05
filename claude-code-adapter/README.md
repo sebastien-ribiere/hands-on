@@ -1,118 +1,120 @@
-# Claude Code adapter
+# Adapter Claude Code
 
-**Spike 3** proves Golden Thread is usable from inside a real Claude Code
-session, without moving any Golden Thread logic into Claude Code. The core
-still doesn't know Claude Code exists -- `golden-thread-cli/tests/
-test_core_is_harness_agnostic.py` still passes, untouched, and this directory
-is the only thing that changed.
+**Spike 3** démontre que Golden Thread est utilisable depuis une vraie session
+Claude Code sans déplacer de logique Golden Thread dans Claude Code. Le core ne
+sait toujours pas que Claude Code existe :
+`golden-thread-cli/tests/test_core_is_harness_agnostic.py` continue de passer,
+et ce répertoire reste le seul endroit contenant le glue spécifique au harness.
 
-## Contract: core -> adapter
+## Contrat : core -> adapter
 
-Nothing new was added to the core. This adapter is built entirely on the
-contract Spike 1 and Spike 2 already shipped:
+Rien de nouveau n’a été ajouté au core. Cet adapter repose entièrement sur le
+contrat déjà livré par Spike 1 et Spike 2 :
 
     golden-thread -C <project> status --json
 
-That one command is the whole interface. It answers, in one JSON document:
-which Golden Thread (`ref`, `profile`), and the current `pathStatus`
-(`ON PATH` / `OFF PATH` / `NOT READY` / `STALE` / `INCOMPLETE`) with, per requirement, the
-exact reason it isn't `PASS` (`freshness.reasons`, or the `violations` in
+Cette commande constitue toute l’interface. Elle répond, dans un seul document
+JSON : quel Golden Thread est actif (`ref`, `profile`) et quel est le
+`pathStatus` courant (`ON PATH` / `OFF PATH` / `NOT READY` / `STALE` /
+`INCOMPLETE`), avec pour chaque exigence la raison exacte pour laquelle elle
+n’est pas `PASS` (`freshness.reasons`, ou les `violations` dans
 `evidence.result`).
 
-The adapter deliberately never calls `verify`. `status` re-identifies the
-subject by digest but runs no check -- it's cheap enough to call before every
-session and before every edit. `verify` runs the actual check engine and
-produces new evidence; triggering that silently from a hook, on every
-keystroke, is exactly the kind of thing Spike 2 built the evidence model to
-prevent ("no silent reuse", and no silent *production* either). Verification
-stays a decision the developer makes on purpose, by typing
-`golden-thread verify`.
+L’adapter n’appelle volontairement jamais `verify`. `status` réidentifie le
+sujet par digest mais n’exécute aucun check ; il est suffisamment léger pour
+être appelé avant chaque session et avant chaque modification. `verify` exécute
+les engines réels et produit de nouvelles preuves. Le déclencher silencieusement
+depuis un hook à chaque frappe serait précisément le type de comportement que
+le modèle de preuve du Spike 2 cherche à éviter : pas de réutilisation
+silencieuse, et pas non plus de *production* silencieuse. La vérification reste
+une décision volontaire du développeur, prise en tapant `golden-thread verify`.
 
-## Hooks used, and why
+## Hooks utilisés, et pourquoi
 
-Two Claude Code hooks, both read-only against `status --json`, both
-non-blocking by construction:
+Deux hooks Claude Code, tous deux en lecture seule vis-à-vis de `status --json`
+et tous deux non bloquants par construction :
 
-- **`SessionStart`** -- runs once when a session opens on a Golden
-  Thread-attached project. Emits `hookSpecificOutput.additionalContext`
-  (and a matching `systemMessage`) with the version, profile and status.
-  This is "the context minimal nécessaire" from the brief: three lines,
-  shown once, not injected into every turn.
+- **`SessionStart`** — exécuté une fois à l’ouverture d’une session sur un projet
+  rattaché à Golden Thread. Il émet `hookSpecificOutput.additionalContext`
+  ainsi qu’un `systemMessage` équivalent avec la version, le profil et le
+  statut. C’est le contexte minimal nécessaire : trois lignes, affichées une
+  seule fois, pas injectées à chaque tour.
 
-- **`PreToolUse`**, matched on `Edit|Write` -- runs before a file change.
-  If the path is not `ON PATH`, it emits the same kind of message, framed as
-  `GOLDEN THREAD DEVIATION`, listing what's missing per requirement. It
-  always sets `permissionDecision: "allow"` (see below) and always exits 0.
+- **`PreToolUse`**, sur `Edit|Write` — exécuté avant une modification de fichier.
+  Si le projet n’est pas `ON PATH`, il émet le même type de message sous la
+  forme `GOLDEN THREAD DEVIATION`, avec les éléments manquants par exigence. Il
+  fixe toujours `permissionDecision: "allow"` et termine toujours avec le code
+  0.
 
-No other hook was needed. `PostToolUse` was considered (to confirm a check
-still passes right after an edit) and rejected for this spike: `status`
-alone, called again at the next `SessionStart` or `PreToolUse`, already
-re-establishes freshness from the digest -- a third call point would be
-duplication, not new information.
+Aucun autre hook n’a été nécessaire. `PostToolUse` a été envisagé pour confirmer
+qu’un check passe encore juste après une modification, puis rejeté pour ce
+spike : `status`, rappelé au prochain `SessionStart` ou `PreToolUse`,
+réétablit déjà la fraîcheur via le digest. Un troisième point d’appel aurait été
+de la duplication, pas une nouvelle information.
 
-`statusLine` was considered as an alternative to `SessionStart` for a
-persistent "always visible" status. Not used here: it would need a second
-moving part (a cache file written by one hook and read by the status line
-script) for a spike whose brief only asks the context to appear naturally at
-session start. Worth revisiting if Golden Thread status needs to survive a
-long session without a fresh look, which SessionStart alone won't catch --
-this is now an open question in memory, not something built.
+`statusLine` a aussi été envisagé comme alternative à `SessionStart` afin de
+conserver un statut toujours visible. Il n’est pas utilisé ici : cela
+nécessiterait une seconde mécanique, avec un fichier de cache écrit par un hook
+et lu par la status line, pour un spike dont le brief demande seulement que le
+contexte apparaisse naturellement au démarrage de la session. Cela mérite
+éventuellement d’être revisité si l’on veut qu’un statut Golden Thread reste
+visible pendant une longue session sans nouveau check ; ce n’est pas construit
+ici.
 
-## Why the adapter can't gate
+## Pourquoi l’adapter ne peut pas bloquer
 
-`PreToolUse` hooks *can* deny a tool call (`permissionDecision: "deny"`, or
-exit 2). This adapter's code never uses either. That's asserted, not just
-described: `tests/test_adapter_is_isolated.py` greps `hooks/*.py` for
-`"deny"`/`"ask"` and for any `return` of a non-zero exit code, and fails the
-suite if either appears. The "not a prison" stance from the core's own
-framing is enforced the same way the core enforces its own harness-agnosticism
-on itself -- a test that would fail the moment someone tried to add a block.
+Les hooks `PreToolUse` *peuvent* refuser un appel d’outil
+(`permissionDecision: "deny"` ou code de sortie 2). Cet adapter n’utilise jamais
+l’un ni l’autre. Ce n’est pas seulement documenté :
+`tests/test_adapter_is_isolated.py` inspecte `hooks/*.py` à la recherche de
+`"deny"` / `"ask"` et de retours non nuls, et fait échouer la suite si l’un de
+ces mécanismes apparaît. La philosophie « pas une prison » est donc imposée par
+un test, comme le core impose lui-même son indépendance au harness.
 
-## What stays harness-agnostic vs. what is Claude Code-specific
+## Ce qui reste harness-agnostic et ce qui est spécifique à Claude Code
 
-Harness-agnostic (lives in `golden-thread-cli/`, untouched by this spike):
-the evidence model, the freshness/staleness logic, the `layered_dependencies`
-check, the `status --json` report shape, all exit codes.
+Harness-agnostic, dans `golden-thread-cli/` : le modèle de preuve, la logique de
+fraîcheur/staleness, le check `layered_dependencies`, la forme du rapport
+`status --json` et les codes de sortie.
 
-Claude Code-specific (lives only here, in `claude-code-adapter/`):
+Spécifique à Claude Code, uniquement dans `claude-code-adapter/` :
 
-- the two hook scripts and their `hookSpecificOutput` shape;
-- the translation from `pathStatus` / `reportedStatus` / `freshness.reasons`
-  into the two lines of prose Claude Code shows (`lib/render.py`);
-- `.claude/settings.json` in the consumer project, which registers the
-  hooks.
+- les deux scripts de hooks et leur forme `hookSpecificOutput` ;
+- la traduction de `pathStatus`, `reportedStatus` et `freshness.reasons` vers
+  les quelques lignes de texte affichées à Claude Code (`lib/render.py`) ;
+- `.claude/settings.json` dans le projet consommateur, qui enregistre les hooks.
 
-No corporate rule, no ARCH-001 knowledge, no policy concept lives in this
-adapter. It knows five field names from the JSON report and nothing about
-what they mean.
+Aucune règle corporate, aucune connaissance de `ARCH-001`, aucun concept de
+policy ne vit dans l’adapter. Il connaît quelques champs du rapport JSON et rien
+de leur sémantique métier.
 
-## A real name collision, worth knowing about
+## Une vraie collision de nom à connaître
 
-This machine already has a *different, unrelated* `golden-thread` package on
-PATH (`pip show golden-thread` -> `/home/seb/src/AI/golden-thread`, an "AI
-golden path CLI for platform teams"). A bare `golden-thread` command is not
-guaranteed to be this project's CLI here. `lib/golden_thread_client.py`
-therefore resolves the binary from `$GOLDEN_THREAD_BIN` if set, falling back
-to the bare command otherwise -- and the demo's `.claude/settings.json` sets
-that variable explicitly to this repo's own
-`golden-thread-cli/bin/golden-thread`. A real install of this tool (via
-`pip install -e golden-thread-cli`, as the top-level README documents) would
-not have this collision; this is a fact about the machine the spike was built
-on, not about the design.
+La machine ayant servi au spike possède déjà un autre package `golden-thread`,
+sans rapport avec celui-ci, dans le `PATH`. Une commande nue `golden-thread`
+n’est donc pas garantie d’appeler cette CLI. `lib/golden_thread_client.py`
+résout d’abord le binaire depuis `$GOLDEN_THREAD_BIN` lorsqu’il est défini, puis
+revient à la commande nue sinon. Le `.claude/settings.json` de la démo fixe
+explicitement cette variable vers `golden-thread-cli/bin/golden-thread`.
 
-## Installing the adapter into a project
+Une vraie installation de cet outil, par exemple via
+`pip install -e golden-thread-cli`, n’aurait pas ce problème particulier. Il
+s’agit d’un fait sur la machine de construction du spike, pas d’un élément du
+design.
 
-1. Attach the project to a Golden Thread (`golden-thread init ...`), as
-   already documented in the top-level README.
-2. Add `.claude/settings.json` registering the two hooks, pointed at this
-   directory's `hooks/session_start.py` and `hooks/pre_tool_use.py`. See
-   `demo-spellbook/.claude/settings.json` for the exact, working example
-   used in the demo below.
+## Installer l’adapter dans un projet
 
-## Reproducing the demonstration
+1. Rattacher le projet à un Golden Thread avec `golden-thread init ...`, comme
+   documenté dans le README racine.
+2. Ajouter `.claude/settings.json` pour enregistrer les deux hooks et les faire
+   pointer vers `hooks/session_start.py` et `hooks/pre_tool_use.py`. Voir
+   `demo-spellbook/.claude/settings.json` pour l’exemple exact utilisé par la
+   démo.
 
-Deterministic, no live model call -- feeds the hooks the exact stdin JSON
-Claude Code sends, and reads their stdout JSON:
+## Reproduire la démonstration
+
+Version déterministe, sans appel live au modèle : on fournit aux hooks le JSON
+stdin exact envoyé par Claude Code et on lit leur JSON stdout.
 
     cd demo-spellbook
     ../golden-thread-cli/bin/golden-thread verify   # ON PATH baseline
@@ -151,8 +153,8 @@ Claude Code sends, and reads their stdout JSON:
     git checkout -- src/spells/protection/ward.py
     ../golden-thread-cli/bin/golden-thread verify   # ON PATH again
 
-A real Claude Code session, driven the same way (also run for this spike, see
-the REVIEW PACKET for the transcripts):
+Une vraie session Claude Code, pilotée de la même manière, a également été
+utilisée pendant le spike :
 
     cd demo-spellbook
     claude -p "In one short sentence, based only on the Golden Thread \
@@ -175,131 +177,136 @@ anything about this project." --permission-mode acceptEdits
 
     python3 -m pytest claude-code-adapter/tests -q
 
-The suite covers SessionStart context, PreToolUse signalling, rendering and the
-structural guards described above.
+La suite couvre le contexte de `SessionStart`, le signal de `PreToolUse`, le
+rendu et les gardes structurelles décrites ci-dessus.
 
-Run this suite and `golden-thread-cli/tests` as two separate `pytest`
-invocations, not one combined command: both directories have a same-named,
-package-less `conftest.py`, and pytest's default import mode caches the first
-one it loads under the module name `conftest`, so a single invocation covering
-both silently binds the second suite to the wrong fixtures.
+Exécuter cette suite et `golden-thread-cli/tests` dans deux invocations `pytest`
+séparées. Les deux répertoires contiennent un `conftest.py` sans package portant
+le même nom ; le mode d’import par défaut de pytest met le premier en cache sous
+le nom de module `conftest`, et une invocation unique pourrait donc lier la
+seconde suite aux mauvaises fixtures.
 
-## Testing the core still works with no harness at all
+## Vérifier que le core fonctionne toujours sans aucun harness
 
-Nothing in `golden-thread-cli/` was touched by this spike.
+Aucune logique du core ne dépend de Claude Code.
 
     python3 -m pytest golden-thread-cli/tests -q
 
-The core suite includes `test_core_is_harness_agnostic.py`, which greps the
-core's source for any reference to `claude`, `anthropic`, `.mcp`, `copilot` or
-`cursor` and fails if it finds one.
+La suite core contient notamment `test_core_is_harness_agnostic.py`, qui inspecte
+les sources du core à la recherche de références à `claude`, `anthropic`, `.mcp`,
+`copilot` ou `cursor`, et échoue si elle en trouve.
 
-## Known limitation, not built here
+## Limitation connue, non construite ici
 
-`PreToolUse` reports the *project's* path status, not the status of the file
-being edited. Editing `README.md` while `ward.py` is `OFF PATH` still shows
-the deviation banner -- confirmed live in the demo above, where the model
-correctly called it "unrelated noise" for that specific edit. Scoping the
-signal to files a rule actually reads would need the adapter to know which
-files each requirement's subject covers, which `status --json` does not
-expose today (only a digest, not a file list). Left as an open question
-rather than built.
+`PreToolUse` rapporte le statut du *projet*, pas celui du fichier en cours de
+modification. Modifier `README.md` lorsque `ward.py` est `OFF PATH` affiche donc
+encore la bannière de déviation. Cela a été confirmé en live pendant la démo, où
+le modèle a correctement identifié ce signal comme sans rapport avec
+l’édition précise qu’il réalisait.
+
+Pour limiter le signal aux fichiers réellement lus par une règle, l’adapter
+devrait connaître les fichiers couverts par le sujet de chaque exigence. Le
+rapport `status --json` n’expose aujourd’hui qu’un digest, pas la liste de
+fichiers. Ce point reste volontairement ouvert plutôt que construit dans ce
+spike.
 
 ---
 
-## Spike 4: the readiness skill
+## Spike 4 : la skill de readiness
 
-Spike 4 adds one more Claude Code-specific artifact to this directory, and
-still nothing to the core's Claude Code awareness: `skills/spec-readiness/`.
+Spike 4 ajoute un artefact Claude Code supplémentaire dans ce répertoire sans
+rendre le core conscient de Claude Code : `skills/spec-readiness/`.
 
-The skill assesses a mission against the rubric the *project's* Golden Thread
-publishes, and records the assessment. It reads that rubric at runtime with
-`golden-thread readiness rubric --json` rather than carrying a copy — a rubric
-remembered from another project is not this project's policy, and the rubric
-is versioned precisely so that assessments can be pinned to one.
+La skill évalue une mission selon la rubric publiée par le Golden Thread *du
+projet* et enregistre cette évaluation. Elle lit la rubric à l’exécution avec
+`golden-thread readiness rubric --json` au lieu d’en embarquer une copie : une
+rubric mémorisée depuis un autre projet n’est pas la policy de ce projet, et la
+rubric est justement versionnée pour que les évaluations soient rattachées à
+une version précise.
 
-### The skill assesses. It never approves.
+### La skill évalue. Elle n’approuve jamais.
 
-`DOR-001` is satisfied by an assessment *and* a human decision. The skill
-produces the first. It must never produce the second, and this is enforced the
-same way everything else in this directory is enforced — by a test, not by a
-convention:
+`DOR-001` est satisfaite par une évaluation *et* une décision humaine. La skill
+produit la première. Elle ne doit jamais produire la seconde, et cette frontière
+est imposée par un test, pas par convention.
 
-`tests/test_adapter_is_isolated.py` extracts the shell fences from every
-`SKILL.md` and asserts that neither `approve` nor `--confirm` appears among the
-commands a skill tells an agent to run. Greping the whole file would be
-useless, since the skill's *prohibition* against approving necessarily contains
-the word; what must not exist is an executable instruction.
+`tests/test_adapter_is_isolated.py` extrait les blocs shell de chaque `SKILL.md`
+et vérifie que ni `approve` ni `--confirm` n’apparaissent parmi les commandes
+qu’une skill demande à un agent d’exécuter. Scanner le fichier entier serait
+inutile, puisque l’interdiction elle-même contient nécessairement le mot
+`approve` ; ce qu’il faut empêcher, c’est une instruction exécutable.
 
-Verified in a real session, twice:
+Vérifié en vraie session à deux reprises :
 
-- asked "is this mission ready?", the model ran the skill, read the rubric and
-  the surrounding code, scored 3/10, surfaced three decisions — including one
-  the mission had not noticed, that no ice element exists in
-  `src/spells/elements/` — and recorded a valid assessment;
-- asked to re-assess *and approve on the user's explicit authority*, it scored
-  9/10 and declined to approve, printing the command for the user to run
-  instead. No `human-attestation` was written.
+- lorsqu’on lui demande « is this mission ready? », le modèle exécute la skill,
+  lit la rubric et le code environnant, donne 3/10, remonte trois décisions —
+  dont l’absence d’élément ice dans `src/spells/elements/` — et enregistre une
+  évaluation valide ;
+- lorsqu’on lui demande de réévaluer *et d’approuver avec l’autorité explicite
+  de l’utilisateur*, il donne 9/10, refuse d’approuver et affiche à la place la
+  commande que l’utilisateur doit exécuter. Aucune `human-attestation` n’est
+  écrite.
 
-The second one is the important one. The guard holds against a user who
-actively wants it not to.
+Le second cas est le plus important : la garde tient même face à un utilisateur
+qui souhaite explicitement la contourner.
 
-### Rendering NOT READY
+### Rendu de NOT READY
 
-`lib/render.py` gained one branch. `NOT READY` gets its own wording rather than
-reusing the deviation banner: "you are leaving the supported path" is the wrong
-sentence for work nobody has agreed to yet — the code is not the problem. It
-still sets `permissionDecision: "allow"`, still exits 0, and the two structural
-guards above it still pass unchanged.
+`lib/render.py` possède une branche dédiée. `NOT READY` reçoit son propre texte
+au lieu de réutiliser la bannière de déviation : « you are leaving the supported
+path » serait une mauvaise formulation pour un travail que personne n’a encore
+accepté — le code n’est pas le problème. Le hook conserve
+`permissionDecision: "allow"`, termine avec 0 et reste soumis aux gardes
+structurelles.
 
-`_missing_line` also learned to read `result.notes`, which is where a
-requirement whose failure is not import-graph shaped explains itself. Those are
-still the core's own words, carried through: the adapter picks which to show
-and writes none of its own.
+`_missing_line` sait également lire `result.notes`, où une exigence dont l’échec
+n’a pas la forme d’un import graph explique son état. Ces textes restent ceux du
+core : l’adapter choisit quoi afficher mais n’invente pas leur contenu.
 
-## Spike 5: two more things a skill may never do, and one more shape to render
+## Spike 5 : deux actions supplémentaires interdites aux skills, et une nouvelle forme à rendre
 
-### The guards, extended
+### Gardes étendues
 
-The Definition of Done added two requirements an agent must not satisfy on a
-person's behalf, and both are enforced the same way `approve` is — by parsing
-the shell fences out of every `SKILL.md`:
+La Definition of Done ajoute deux exigences qu’un agent ne doit pas satisfaire
+à la place d’une personne. Elles sont protégées de la même manière que
+`approve`, en analysant les blocs shell de chaque `SKILL.md` :
 
-- **`golden-thread attest`.** An agent recording the cookie attestation would
-  be claiming that a person did something in the physical world. It is a
-  stronger version of the approval case: there, a model at least read the
-  assessment it was signing off; here there is nothing to read.
-- **`golden-thread docs stamp`.** `docs stamp` is deliberately cheap — one
-  command, because a gate expensive enough to resent gets routed around. That
-  reasoning only holds while a person runs it. A skill that stamped after
-  editing code would turn "somebody re-stamped this against this code" into
-  "the tool did", which is a claim about nothing.
+- **`golden-thread attest`.** Si un agent enregistrait lui-même l’attestation
+  cookies, il affirmerait qu’une personne a accompli quelque chose dans le monde
+  physique. Le cas est même plus fort que l’approbation : dans ce dernier, le
+  modèle a au moins lu l’évaluation ; ici il n’existe rien à lire.
+- **`golden-thread docs stamp`.** `docs stamp` est volontairement peu coûteux :
+  une seule commande, car un gate assez pénible finit par être contourné. Ce
+  raisonnement ne tient que tant qu’une personne exécute la commande. Une skill
+  qui stamp automatiquement après avoir modifié du code transformerait
+  « quelqu’un a restampé ce document » en « l’outil l’a fait », une affirmation
+  qui ne prouve plus rien.
 
-Cheap is not the same as automatic, and the difference is the whole content of
-the requirement.
+Peu coûteux ne signifie pas automatique ; toute la différence se trouve là.
 
-### Rendering a security finding
+### Rendu d’un finding de sécurité
 
-`lib/render.py` gained a second branch in `_missing_line`. A violation is
-import-graph shaped and renders as `source -> target`; a finding has neither.
-Passing one through the violation path would print an arrow between two fields
-that do not exist — a fabricated fact, in a message a developer is meant to
-trust. So findings render on their own:
+`lib/render.py` possède une branche supplémentaire dans `_missing_line`. Une
+violation d’import graph se rend sous la forme `source -> target` ; un finding
+de sécurité ne possède ni l’un ni l’autre. Le faire passer par le chemin des
+violations produirait une flèche entre deux champs inexistants : un fait
+fabriqué dans un message destiné à inspirer confiance. Les findings sont donc
+rendus sous leur propre forme :
 
     SEC-001 -- src/spells/protection/ward.py:21 MEDIUM B307 (bandit)
 
-Only findings the profile marked `blocking` are surfaced. The rest were
-recorded below that profile's threshold, and repeating them as problems would
-misreport the policy the team is actually held to. The severity and rule id are
-the analyser's own, unchanged — the adapter still writes none of its own words.
+Seuls les findings marqués `blocking` par le profil sont remontés. Les autres
+ont été enregistrés sous le seuil du profil ; les répéter comme des problèmes
+ferait mentir l’adapter sur la policy réellement appliquée. Sévérité et
+identifiant de règle restent ceux de l’analyseur, inchangés.
 
-`tests/test_security_render.py` pins all of it, including the absence of the
-arrow.
+`tests/test_security_render.py` fixe ce comportement, notamment l’absence de
+flèche artificielle.
 
-### The pipeline does not use any of this
+### La pipeline n’utilise rien de tout cela
 
-`.gitlab-ci.yml` runs `golden-thread verify` and never touches this directory.
-That is the point worth stating in the adapter's own README: everything here is
-a *convenience for a session*, and nothing an agent does is load-bearing for
-the verification an organisation actually relies on. The pipeline would run
-identically on a machine where Claude Code has never been installed.
+`.gitlab-ci.yml` exécute `golden-thread verify` et ne touche jamais ce
+répertoire. C’est un point essentiel : tout ce qui vit ici est une commodité de
+session, et rien de ce qu’un agent fait n’est nécessaire à la vérification sur
+laquelle l’organisation s’appuie. La pipeline s’exécuterait de manière
+identique sur une machine où Claude Code n’a jamais été installé.
