@@ -122,6 +122,9 @@ def test_the_skill_says_so_in_words_as_well():
     skill = (SKILLS / "spec-readiness" / "SKILL.md").read_text()
     assert "Never execute `golden-thread readiness approve` on behalf of the user" in skill
     assert "10/10" in skill, "the skill must address the perfect-score case"
+    assert "Conversation is not the project contract" in skill
+    assert re.search(r"do not silently continue into\s+implementation", skill)
+    assert "continue implementation off-path despite the current `NOT READY` status" in skill
 
 
 def test_the_skill_reads_the_rubric_from_the_project_rather_than_from_memory():

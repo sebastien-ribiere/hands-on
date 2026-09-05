@@ -46,7 +46,9 @@ def test_not_ready_is_not_described_as_a_deviation(attached_with_dor):
     assert lines[0] == "GOLDEN THREAD -- NOT READY"
     assert "This work has not met its Definition of Ready." in lines
     assert not any("leaving the supported path" in line for line in lines)
-    assert any("does not stop you" in line for line in lines)
+    assert "Do not start implementation silently while NOT READY." in lines
+    assert any("explicitly choose to continue off-path" in line for line in lines)
+    assert any("agent discipline, not a technical gate" in line for line in lines)
 
 
 def test_an_architecture_deviation_still_reads_as_one(attached):
@@ -67,7 +69,10 @@ def test_the_edit_is_still_allowed_while_not_ready(attached_with_dor, run_hook):
     output = run_hook("pre_tool_use.py", attached_with_dor)
 
     assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
-    assert "NOT READY" in output["hookSpecificOutput"]["additionalContext"]
+    context = output["hookSpecificOutput"]["additionalContext"]
+    assert "NOT READY" in context
+    assert "Do not start implementation silently" in context
+    assert "explicitly choose to continue off-path" in context
 
 
 def test_nothing_is_said_once_the_mission_is_ready(attached_with_dor, run_hook):
