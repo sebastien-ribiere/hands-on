@@ -2,17 +2,11 @@
 # evidence, the manifest rebuilds the policy cache.
 .golden-thread/
 
-# golden-thread-attestations.json IS COMMITTED IN A REAL PROJECT, and this line
-# is the exception, not the rule. An attestation is the one artefact nothing
-# can regenerate, and it has to travel to a CI runner that would otherwise
-# report agreed work as un-agreed.
-#
-# It is ignored *here* because this project is a demonstration: its
-# attestations are produced by demo/run-dod-demo.sh against a mission the demo
-# itself rewrites, so a committed snapshot would be stale the moment the demo
-# ran. A real project commits this file and reviews it in the merge request --
-# which is where "who attested what, about which version" belongs.
-golden-thread-attestations.json
+# golden-thread-attestations.json is intentionally NOT ignored.
+# Human attestations are not reproducible evidence: once recorded, they must
+# travel with the project so a CI runner can evaluate the same contract as the
+# developer. In this demo, the file is created during the hands-on and is meant
+# to be committed/reviewed like any other delivery artefact.
 
 # golden-thread.json is NOT ignored, and that is the point: the manifest is
 # what pins the golden path for everyone on the team, including a CI runner
