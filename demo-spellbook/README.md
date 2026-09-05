@@ -1,34 +1,35 @@
 # demo-spellbook
 
-A consumer project attached to the Golden Thread.
+Un projet consommateur rattaché à Golden Thread.
 
     src/spells/
       elements/   air, water, fire
-      protection/ shield, ward     <- bound by ARCH-001
-      offense/    flame_lance      <- may use fire freely
-    tests/        what TEST-001 runs
-    docs/         what DOC-001 stamps
-    MISSION.md    what DOR-001 is about
+      protection/ shield, ward     <- soumis à ARCH-001
+      offense/    flame_lance      <- peut utiliser fire librement
+    tests/        ce que TEST-001 exécute
+    docs/         ce que DOC-001 stampe
+    MISSION.md    le sujet de DOR-001
 
-## What is committed, and what is not
+## Ce qui est commité, et ce qui ne l’est pas
 
-    golden-thread.json                committed   which policy this project is on
-    golden-thread-attestations.json   *see below*  what we were told, and by whom
-    .golden-thread/                   ignored     policy cache and recorded evidence
+    golden-thread.json                commité      indique à quelle policy le projet est rattaché
+    golden-thread-attestations.json   *voir ci-dessous*  ce qui nous a été déclaré, et par qui
+    .golden-thread/                   ignoré       cache de policy et preuves enregistrées
 
-The split is by what can be rebuilt. `verify` reproduces the evidence and the
-manifest reproduces the cache, so `.golden-thread/` is disposable. An
-attestation is the one thing nothing can regenerate -- somebody's word -- and
-it has to reach a CI runner that would otherwise report agreed work as
-un-agreed.
+La séparation dépend de ce qui peut être reconstruit. `verify` reproduit les
+preuves et le manifest reproduit le cache ; `.golden-thread/` est donc jetable.
+Une attestation est la seule chose que rien ne peut régénérer — la parole de
+quelqu’un — et elle doit parvenir jusqu’au runner CI, qui signalerait autrement
+comme non accepté un travail pourtant accepté.
 
-**`golden-thread-attestations.json` is committed in a real project.** It is
-ignored here, and only here, because this is a demonstration: its contents are
-produced by `demo/run-dod-demo.sh` against a mission the demo itself rewrites,
-so a committed snapshot would be stale the moment the demo ran.
+**`golden-thread-attestations.json` est commité dans un vrai projet.** Il est
+ignoré ici, et uniquement ici, parce qu’il s’agit d’une démonstration : son
+contenu est produit par `demo/run-dod-demo.sh` à partir d’une mission que la démo
+réécrit elle-même ; un snapshot commité deviendrait donc stale dès l’exécution
+de la démo.
 
-The manifest carries a source *relative to this directory*, which is what makes
-it committable at all -- an absolute path is specific to one machine, and a
-manifest nobody can commit pins nothing for anybody else.
+Le manifest contient une source *relative à ce répertoire*. C’est ce qui le
+rend commitable : un chemin absolu est propre à une machine, et un manifest que
+personne ne peut commiter ne pinne rien pour les autres.
 
-The corporate configuration is never copied into this project.
+La configuration corporate n’est jamais copiée dans ce projet.
