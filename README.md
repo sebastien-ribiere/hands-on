@@ -1,247 +1,262 @@
 # Golden Thread
 
-A golden path an organisation can distribute, version, and verify.
+Un golden path qu’une organisation peut distribuer, versionner et vérifier.
 
-**Spike 1** proved the vertical slice: a project attaches itself to a versioned
-Golden Thread, knows which version and profile it is on, runs a real
-architecture rule, and goes **OFF PATH** when it breaks it.
+**Spike 1** a validé la vertical slice : un projet se rattache à une version
+explicite de Golden Thread, sait sur quelle version et quel profil il se trouve,
+exécute une vraie règle d’architecture et passe **OFF PATH** lorsqu’il la viole.
 
-**Spike 2** makes every verdict accountable. There is no `architecture: true`
-anywhere. A status is only ever reported together with the *evidence* it came
-from — and evidence that no longer describes the work or the requirement is reported as **STALE**
-rather than quietly reused.
+**Spike 2** rend chaque verdict traçable. Il n’existe aucun `architecture: true`
+nulle part. Un statut n’est rapporté qu’avec les *preuves* dont il provient — et
+une preuve qui ne décrit plus le travail ou l’exigence courante est marquée
+**STALE** au lieu d’être silencieusement réutilisée.
 
-**Spike 3** adds a minimal Claude Code adapter, proving the core is usable
-from inside a real Claude Code session without moving any Golden Thread logic
-into Claude Code. See [`claude-code-adapter/README.md`](claude-code-adapter/README.md).
+**Spike 3** ajoute un adapter Claude Code minimal, démontrant que le core est
+utilisable depuis une vraie session Claude Code sans déplacer de logique Golden
+Thread dans Claude Code. Voir [`claude-code-adapter/README.md`](claude-code-adapter/README.md).
 
-**Spike 4** adds a **Definition of Ready** — the first requirement Golden Thread
-cannot verify by itself. `DOR-001` is satisfied by two claims made elsewhere: an
-assessment produced against a versioned rubric, and a decision made by a person.
-Neither is sufficient alone, and the CLI produces neither.
+**Spike 4** ajoute une **Definition of Ready** — la première exigence que Golden
+Thread ne peut pas vérifier seul. `DOR-001` est satisfaite par deux affirmations
+produites ailleurs : une évaluation effectuée selon une rubric versionnée, et une
+décision prise par une personne. Aucune des deux ne suffit seule, et la CLI ne
+produit ni l’une ni l’autre.
 
-**Spike 5** completes the thread: a **Definition of Done** with five
-requirements and five genuinely different kinds of evidence, a **real security
-analyser**, and a **GitLab pipeline that replays the whole verification with no
-agent anywhere in it**.
+**Spike 5** complète le fil : une **Definition of Done** avec cinq exigences et
+cinq formes de preuves réellement différentes, un **vrai analyseur de sécurité**,
+et une **pipeline GitLab qui rejoue toute la vérification sans aucun agent**.
 
-The core is still stdlib-only Python with no dependency on any AI harness. The
-assessment arrives from outside it; the rubric is data in the corporate policy;
-the analyser is a subprocess the policy names.
+Le core reste en Python stdlib uniquement, sans dépendance envers un harness IA.
+L’évaluation arrive de l’extérieur ; la rubric est une donnée de la policy
+corporate ; l’analyseur est un sous-processus nommé par cette policy.
 
-## The rule under test
+## La règle testée
 
     ARCH-001
     Protection spells may depend on the Air and Water elements.
     They may not depend on Fire.
 
-This is a genuine dependency rule, not a string match. It is checked against the
-project's real import graph, built with Python's `ast` module — relative imports
-included. `demo-spellbook/src/spells/offense/flame_lance.py` depends on Fire and
-stays compliant, because the rule is scoped to the protection layer.
+Il s’agit d’une vraie règle de dépendances, pas d’une recherche de chaîne. Elle
+est vérifiée sur le graphe d’import réel du projet, construit avec le module
+Python `ast`, imports relatifs compris. `demo-spellbook/src/spells/offense/flame_lance.py`
+dépend de Fire et reste conforme, car la règle est limitée à la couche de
+protection.
 
-## The Definition of Ready
+## La Definition of Ready
 
     DOR-001
     A mission is Ready before implementation starts.
 
-Satisfied only when **both** of these hold:
+Elle n’est satisfaite que lorsque **ces deux conditions** sont remplies :
 
     an assessment scoring >= 8/10 against spec-readiness@1.0.0, with no blockers
       +
     a human attestation recording a person's decision
 
-### The score is an assessment, not a measurement
+### Le score est une évaluation, pas une mesure
 
-Two assessors reading the same mission against the same rubric will disagree.
-This is not a caveat added by the tool — it is written into the rubric itself,
-in `caveat`, and printed verbatim by `golden-thread readiness rubric`.
+Deux évaluateurs lisant la même mission avec la même rubric peuvent être en
+désaccord. Ce n’est pas une réserve ajoutée par l’outil : c’est écrit dans la
+rubric elle-même, dans `caveat`, et affiché textuellement par
+`golden-thread readiness rubric`.
 
-It was also observed rather than assumed. On the demo's own mission, under
-`spec-readiness@1.0.0`, the canned assessment in `demo/assessment-initial.json`
-scores **7/10** and a live model session scored the identical document **3/10**,
-raising a decision neither the mission nor the canned assessment had noticed
-(there is no ice element in `src/spells/elements/`). Same rubric, same text,
-different readers, different numbers. That is the normal case.
+Cela a aussi été observé, pas simplement supposé. Sur la mission de la démo,
+avec `spec-readiness@1.0.0`, l’évaluation reproductible de
+`demo/assessment-initial.json` donne **7/10**, alors qu’une session live d’un
+modèle a donné **3/10** sur le même document, en soulevant une décision que ni
+la mission ni l’évaluation préparée n’avaient détectée : il n’existe pas
+d’élément ice dans `src/spells/elements/`. Même rubric, même texte, lecteurs
+différents, scores différents. C’est le cas normal.
 
-So a score is never treated as a fact. It is recorded as one named party's
-opinion, with the rubric version it was made under attached, and it makes a
-mission *eligible for a human decision* — nothing more.
+Un score n’est donc jamais traité comme un fait. Il est enregistré comme
+l’opinion d’un acteur nommé, avec la version de rubric utilisée, et rend la
+mission *éligible à une décision humaine* — rien de plus.
 
-### Neither half can stand in for the other
+### Aucune moitié ne peut remplacer l’autre
 
-- **No score satisfies DOR-001 alone**, including 10/10. With
-  `requires_human_approval = true`, the engine has no code path that passes on
-  an assessment by itself.
-- **No approval moves the threshold.** `min_score` lives in the corporate
-  policy. A person approving a 7/10 records their approval, and the requirement
-  still reports 7 as below 8.
-- **A blocker beats any score.** `max_blockers = 0` means one open blocker is
-  not ready at 10/10.
+- **Aucun score ne satisfait DOR-001 à lui seul**, même 10/10. Avec
+  `requires_human_approval = true`, l’engine n’a aucun chemin qui valide une
+  évaluation seule.
+- **Une approbation ne déplace pas le seuil.** `min_score` appartient à la
+  policy corporate. Une personne qui approuve un 7/10 enregistre son
+  approbation, mais l’exigence continue de signaler 7 comme inférieur à 8.
+- **Un blocker l’emporte sur n’importe quel score.** `max_blockers = 0`
+  signifie qu’un seul blocker ouvert rend la mission non prête, même à 10/10.
 
-### The rubric is versioned twice over
+### La rubric est versionnée deux fois
 
-By file name — `rubrics/spec-readiness-1.0.0.toml` — so publishing a revision
-is an added file and a one-line rule change, both visible in a diff. And by the
-`version` field inside it, which every assessment records as
-`spec-readiness@1.0.0`. When a profile later pins `1.1.0`, a recorded
-assessment does not get silently reinterpreted under the new rubric: it stops
-applying, and says which version it was made under.
+Par son nom de fichier — `rubrics/spec-readiness-1.0.0.toml` — afin qu’une
+nouvelle version soit un nouveau fichier et une modification d’une ligne dans
+la règle, tous deux visibles dans un diff. Et par le champ `version` à
+l’intérieur du fichier, que chaque évaluation enregistre sous la forme
+`spec-readiness@1.0.0`. Si un profil référence ensuite `1.1.0`, une ancienne
+évaluation n’est pas silencieusement réinterprétée selon la nouvelle rubric :
+elle cesse de s’appliquer et indique la version sous laquelle elle a été faite.
 
-### Both claims are tied to the text they were made about
+### Les deux affirmations sont liées au texte qu’elles concernent
 
-An assessment and an approval each record the subject digest of the mission
-document. Edit the mission after approving, and neither claim carries over —
-an approval is given to a text, not to a file name. This is the same mechanism
-Spike 2 built for code, applied unchanged to a Markdown file.
+Une évaluation et une approbation enregistrent chacune le digest du sujet du
+document de mission. Modifiez la mission après approbation et aucune des deux
+affirmations ne subsiste : une approbation est donnée à un texte, pas à un nom
+de fichier. C’est exactement le mécanisme construit au Spike 2 pour le code,
+appliqué tel quel à un fichier Markdown.
 
-### The approval boundary, stated honestly
+### La frontière d’approbation, formulée honnêtement
 
-`golden-thread readiness approve` prints the assessment, names the attestor,
-and requires a confirmation phrase derived from the subject digest. Without a
-terminal it refuses rather than assumes, directing the caller to `--confirm`.
+`golden-thread readiness approve` affiche l’évaluation, nomme l’attestateur et
+demande une phrase de confirmation dérivée du digest du sujet. Sans terminal,
+la commande refuse de supposer quoi que ce soit et renvoie l’appelant vers
+`--confirm`.
 
-**This makes approval a deliberate act. It does not prove a human performed
-it**, and nothing on a developer machine can. What it buys is attribution and
-intent: an approval cannot be recorded by accident, cannot be recorded without
-naming who is approving, and cannot be replayed against a different text.
+**Cela rend l’approbation délibérée. Cela ne prouve pas qu’un humain l’a
+réalisée**, et rien sur une machine de développeur ne le peut. Le mécanisme
+apporte attribution et intention : une approbation ne peut pas être enregistrée
+par accident, sans nommer qui approuve, ni rejouée sur un texte différent.
 
-The agent side is enforced separately and structurally: the `spec-readiness`
-skill never runs an approval, and
-`claude-code-adapter/tests/test_adapter_is_isolated.py` parses the shell fences
-out of every `SKILL.md` and fails if `approve` appears among the commands a
-skill tells an agent to run. Verified live: asked to approve on the user's
-explicit authority, the session re-assessed to 9/10 and declined, and no
-`human-attestation` was written.
+La frontière côté agent est imposée séparément et structurellement : la skill
+`spec-readiness` n’exécute jamais d’approbation, et
+`claude-code-adapter/tests/test_adapter_is_isolated.py` analyse les blocs shell
+de chaque `SKILL.md` et échoue si `approve` apparaît dans les commandes qu’une
+skill demande à un agent d’exécuter. Vérifié en live : lorsqu’on lui a demandé
+d’approuver avec l’autorité explicite de l’utilisateur, la session a réévalué à
+9/10 puis refusé d’approuver, et aucune `human-attestation` n’a été écrite.
 
-## The Definition of Done
+## La Definition of Done
 
-Five requirements, and five deliberately different kinds of evidence. The
-point is not that there are five — it is that a Definition of Done contains
-things a machine can settle, things it can only report on, and at least one
-thing it can never touch, and that all three keep the same standing.
+Cinq exigences, avec cinq types de preuves volontairement différents. Le point
+important n’est pas qu’il y en ait cinq : une Definition of Done contient des
+éléments qu’une machine peut trancher, d’autres qu’elle peut seulement rapporter,
+et au moins un qu’elle ne pourra jamais vérifier ; les trois conservent le même
+statut dans le contrat.
 
-| Requirement | Evidence provider | What it actually establishes |
+| Exigence | Fournisseur de preuve | Ce que cela établit réellement |
 |---|---|---|
-| `TEST-001` | a deterministic command | a named argv ran over named files and exited zero |
-| `ARCH-001` | the real import graph | no protection module imports Fire |
-| `SEC-001` | **bandit**, a real analyser | that analyser found nothing it recognises at MEDIUM or above |
-| `DOC-001` | a digest stamp in the document | somebody re-stamped the document against this exact code |
-| `COOKIE-001` | a person's word | somebody said it, and who they were |
+| `TEST-001` | une commande déterministe | un argv nommé a été exécuté sur des fichiers nommés et a terminé avec le code zéro |
+| `ARCH-001` | le vrai graphe d’import | aucun module de protection n’importe Fire |
+| `SEC-001` | **bandit**, un vrai analyseur | cet analyseur n’a rien détecté qu’il classe MEDIUM ou plus |
+| `DOC-001` | un stamp de digest dans le document | quelqu’un a de nouveau stampé le document par rapport à ce code exact |
+| `COOKIE-001` | la parole d’une personne | quelqu’un l’a affirmé, avec son identité déclarée |
 
-There is no separate "Definition of Done" object in the model, and there does
-not need to be one: the profile `academy-spells-done` is the contract, read at
-two moments. `DOR-001` reports `NOT READY` because the work was never agreed;
-the other five report `OFF PATH` because something in the work is not done.
+Il n’existe pas d’objet « Definition of Done » séparé dans le modèle, et il
+n’en faut pas : le profil `academy-spells-done` est le contrat, lu à deux
+moments. `DOR-001` rapporte `NOT READY` lorsque le travail n’a jamais été
+accepté ; les cinq autres rapportent `OFF PATH` lorsqu’un élément du travail
+n’est pas terminé.
 
-### Tests: an exit code, and no more than that
+### Tests : un code de sortie, et rien de plus
 
-`TEST-001` uses the `external_command` engine. The corporate policy declares an
-**argv list** — never a string, so no shell is involved and nothing can be
-quoted, expanded or split into something else — and the exit code is the
+`TEST-001` utilise l’engine `external_command`. La policy corporate déclare une
+**liste argv**, jamais une chaîne : aucun shell n’intervient, donc rien ne peut
+être quoté, expansé ou découpé autrement, et le code de sortie constitue le
 verdict.
 
     command = ["python3", "-m", "pytest", "-q", "tests"]
 
-The argv is recorded in the evidence `method`, because `external_command` does
-not describe a method: running the test suite and running something else are
-the same engine and different methods.
+L’argv est enregistré dans `method` de la preuve, car `external_command` ne
+décrit pas à lui seul une méthode : exécuter la suite de tests et exécuter autre
+chose utilisent le même engine mais constituent des méthodes différentes.
 
-What it claims is narrow and the rule says so in its own rationale: a named
-command ran against named files and exited zero. **An empty suite exits zero
-too.** Requiring the tests to be meaningful is a different requirement, and it
-would need a different engine rather than a stricter reading of this one.
+La portée de l’affirmation est volontairement étroite, et la règle le précise
+dans sa rationale : une commande nommée a été exécutée contre des fichiers
+nommés et a terminé avec le code zéro. **Une suite vide renvoie elle aussi zéro.**
+Exiger des tests pertinents serait une autre exigence, qui demanderait un autre
+engine plutôt qu’une interprétation plus ambitieuse de celui-ci.
 
-A command that could not run at all — missing binary, timeout — is `ERROR`,
-never `FAIL` and never `PASS`. And a command that exits zero over a subject
-matching no files is `ERROR` as well: a pass over nothing is exactly the
-failure mode this project exists to remove.
+Une commande impossible à lancer — binaire manquant, timeout — produit `ERROR`,
+jamais `FAIL` ni `PASS`. Une commande qui renvoie zéro sur un sujet ne contenant
+aucun fichier produit également `ERROR` : un PASS sur rien est exactement le
+type de faux signal que ce projet cherche à éliminer.
 
-### Security: a real analyser, and the policy's threshold on top
+### Sécurité : un vrai analyseur, avec le seuil de la policy par-dessus
 
-`SEC-001` runs **bandit**, pinned at 1.9.4. Golden Thread does not reimplement
-it, restate its findings, or soften them:
+`SEC-001` exécute **bandit**, fixé en version 1.9.4. Golden Thread ne le
+réimplémente pas, ne reformule pas ses findings et ne les adoucit pas :
 
     src/spells/protection/ward.py:21
       MEDIUM B307 (bandit): Use of possibly insecure function - consider using safer ast.literal_eval.
       https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b307-eval
 
-The analyser's rule id, severity, words and reference are copied out unchanged.
-Exactly one field is Golden Thread's own — `blocking` — and it is not an
-opinion about the finding, it is whether *this profile's* threshold makes it a
-failure:
+L’identifiant de règle, la sévérité, le texte et la référence proviennent de
+l’analyseur et sont recopiés sans modification. Un seul champ appartient à
+Golden Thread : `blocking`. Il ne donne pas un avis sur le finding ; il indique
+si le seuil de *ce profil* transforme ce finding en échec :
 
     fail_on_severity = "MEDIUM"
     min_confidence   = "MEDIUM"
 
-Both live in the corporate policy, so "MEDIUM and above fails here" is a
-statement the organisation made and versioned. **Findings below the threshold
-are still recorded**, marked `blocking: false`, with a note saying how many were
-set aside and under which threshold. A scanner whose output is filtered before
-anyone sees it is how a security requirement becomes decoration.
+Les deux valeurs vivent dans la policy corporate. « MEDIUM et au-dessus échoue
+ici » est donc une décision organisationnelle versionnée. **Les findings sous
+le seuil sont tout de même enregistrés**, avec `blocking: false`, accompagnés
+d’une note précisant combien ont été écartés et selon quel seuil. Filtrer les
+résultats d’un scanner avant que quiconque puisse les voir est une bonne manière
+de transformer une exigence de sécurité en décoration.
 
-The exit code is deliberately *not* the verdict here, because a scanner that
-found something and a scanner that crashed both exit non-zero. Anything other
-than "ran cleanly" or "ran and found things" is `ERROR`, as is an unreadable
-report, and as is a report listing files the analyser could not parse — `PASS`
-over code nothing looked at is a claim about unexamined code.
+Le code de sortie n’est volontairement *pas* le verdict ici : un scanner qui a
+trouvé quelque chose et un scanner qui a crashé peuvent tous deux retourner un
+code non nul. Tout état autre que « s’est exécuté proprement » ou « s’est
+exécuté et a trouvé des éléments » produit `ERROR`, tout comme un rapport
+illisible ou un rapport listant des fichiers que l’analyseur n’a pas réussi à
+parser. Un `PASS` sur du code que personne n’a pu analyser est une affirmation
+sur du code non examiné.
 
-`security_scan` reads one report format today (`format = "bandit"`), and an
-unknown format is an `ERROR` naming what is supported. That is one branch, not
-a plugin system.
+`security_scan` sait actuellement lire un seul format de rapport
+(`format = "bandit"`). Un format inconnu produit un `ERROR` qui nomme ce qui est
+supporté. C’est une branche de code, pas un système de plugins.
 
-### Documentation: the mechanism, chosen explicitly
+### Documentation : le mécanisme, choisi explicitement
 
-"The documentation is updated" is easy to put in a Definition of Done and hard
-to mean anything by. Three readings were considered:
+« La documentation est à jour » est facile à ajouter dans une Definition of
+Done et difficile à définir. Trois interprétations ont été étudiées :
 
-- **the doc exists / every function has a docstring.** Checkable, and it
-  measures presence rather than currency. A docstring written two years ago
-  passes forever.
-- **the docs changed in the same commit as the code.** Makes Git the
-  mechanism, which this project has refused since Spike 2: a worktree with
-  uncommitted work is not identified by its HEAD.
-- **the document states which code it describes, and that statement is
-  checked.** This is the one.
+- **le document existe / chaque fonction possède une docstring.** Vérifiable,
+  mais cela mesure la présence, pas l’actualité. Une docstring écrite il y a
+  deux ans reste toujours verte.
+- **la documentation a changé dans le même commit que le code.** Cela fait de
+  Git le mécanisme, alors que ce projet refuse ce raccourci depuis Spike 2 : un
+  worktree avec des modifications non commitées n’est pas identifié par son
+  HEAD.
+- **le document déclare quel code il décrit, et cette déclaration est
+  vérifiée.** C’est la solution retenue.
 
-`docs/ARCHITECTURE.md` carries a line:
+`docs/ARCHITECTURE.md` contient une ligne :
 
     <!-- golden-thread: describes src/ sha256:cdd324e7312c… -->
 
-The engine recomputes the digest of `src/**/*.py` and compares. Different, and
-it says so with both digests:
+L’engine recalcule le digest de `src/**/*.py` et compare. En cas d’écart, il
+affiche les deux digests :
 
     FAIL   DOC-001  The documentation describes the code that ships
            - docs/ARCHITECTURE.md describes src/ at cdd324e7312c
            - src/ is now at 17f84e2b32c7
            - the code moved and the documentation did not say so
 
-This is Spike 2's own mechanism turned outward. The subject covers **both** the
-document and the code, so either moving makes the recorded verdict stale.
+C’est le mécanisme du Spike 2 appliqué vers l’extérieur. Le sujet couvre à la
+fois **le document et le code** ; une modification de l’un ou de l’autre rend le
+verdict enregistré stale.
 
-**What it proves, stated plainly:** that somebody re-stamped the document
-against this exact code. Not that they read it, not that the prose is right.
-`golden-thread docs stamp` takes one second and is cheap on purpose — a gate
-expensive enough to resent is a gate people route around. What the requirement
-removes is the *silent* case, where code ships and nobody has even claimed to
-have looked at the documentation since. The CLI says exactly this every time it
-stamps, and the engine repeats it in the notes of a `PASS`.
+**Ce que cela prouve, précisément :** quelqu’un a restampé le document par
+rapport à ce code exact. Pas que la personne l’a lu, ni que la prose est juste.
+`golden-thread docs stamp` prend une seconde et est volontairement peu coûteux :
+un gate suffisamment pénible finit par être contourné. L’exigence élimine le
+cas *silencieux*, où du code part alors que personne n’a même affirmé avoir
+regardé la documentation depuis. La CLI le dit explicitement à chaque stamp, et
+l’engine le répète dans les notes d’un `PASS`.
 
-### Cookies: the requirement nothing can check
+### Cookies : l’exigence que rien ne peut vérifier
 
-`COOKIE-001` requires that cookies were prepared and shared with the team. It is
-a deliberately unexpected house rule, and it is doing real work.
+`COOKIE-001` exige que des cookies aient été préparés et partagés avec l’équipe.
+C’est volontairement une règle maison inattendue, et elle remplit un vrai rôle.
 
-Every organisation's Definition of Done contains at least one item no scanner,
-test suite or model can establish: the demo was walked through with the right
-people, the on-call rota was told before the deploy, the customer was warned
-about the migration window. They are unverifiable in exactly the way cookies
-are. A tool that could only express what it can compute would quietly push
-those out of the Definition of Done — not by arguing against them, just by
-having nowhere to put them.
+Toutes les organisations ont dans leur Definition of Done au moins un élément
+qu’aucun scanner, aucune suite de tests et aucun modèle ne peut établir : la
+démo a été présentée aux bonnes personnes, l’astreinte a été informée avant le
+déploiement, le client a été prévenu de la fenêtre de migration. Ces éléments
+sont invérifiables exactement comme les cookies. Un langage de policy capable
+de représenter uniquement ce qui est calculable les sortirait silencieusement
+de la Definition of Done, simplement parce qu’il n’aurait aucun endroit où les
+exprimer.
 
-So the requirement sits in the profile with the same standing as the
-architecture rule, and is satisfied by `golden-thread attest COOKIE-001`:
+L’exigence reste donc dans le profil avec le même statut que la règle
+d’architecture et est satisfaite par `golden-thread attest COOKIE-001` :
 
     COOKIE-001  Cookies were prepared and shared with the team
     Claim         Cookies have been prepared and shared with the team for this delivery.
@@ -254,147 +269,159 @@ architecture rule, and is satisfied by `golden-thread attest COOKIE-001`:
 
     Type the phrase to confirm: attest cdd324e7312c
 
-Same confirmation discipline as Spike 4's approval, sharing the same code path
-so neither can drift into being the lax one, and with the same honest limit: it
-makes the claim a deliberate act tied to this exact version of the work. **It
-does not prove a human made it.** The attestation expires when `src/` changes —
-new work, new cookies.
+Même discipline de confirmation que pour l’approbation du Spike 4, en partageant
+le même chemin de code afin qu’aucune des deux opérations ne puisse devenir la
+version laxiste. Même limite honnête également : le mécanisme rend l’affirmation
+délibérée et la lie à cette version exacte du travail. **Il ne prouve pas qu’un
+humain l’a formulée.** L’attestation expire lorsque `src/` change : nouveau
+travail, nouveaux cookies.
 
-Spike 4 chose `readiness approve` over a generic `attest`, on the grounds that
-one instance is not a pattern. This is the second instance and a different act,
-so `attest` exists now and `readiness` is untouched: a Definition of Ready
-still needs its rubric, its score and its assessment, and none of that belongs
-here.
+Spike 4 avait choisi `readiness approve` plutôt qu’un `attest` générique, en
+considérant qu’une occurrence ne constituait pas encore un pattern. Voici la
+deuxième occurrence, et il s’agit d’un acte différent : `attest` existe donc
+maintenant, tandis que `readiness` reste inchangé. Une Definition of Ready a
+toujours besoin de sa rubric, de son score et de son évaluation ; rien de cela
+n’appartient ici.
 
-Two structural guards, in the same spirit as the Spike 4 one: no `SKILL.md` may
-run `golden-thread attest`, and none may run `golden-thread docs stamp`. Both
-are enforced by a test that parses the shell fences out of every skill file.
+Deux gardes structurelles, dans le même esprit que celle du Spike 4 : aucun
+`SKILL.md` ne peut exécuter `golden-thread attest`, et aucun ne peut exécuter
+`golden-thread docs stamp`. Un test analyse les blocs shell de chaque skill pour
+faire respecter ces deux règles.
 
-## Evidence
+## Preuves
 
-One record per requirement, answering six questions and nothing more:
+Un enregistrement par exigence répond à six questions, et rien de plus :
 
-| Field | Question | Example |
+| Champ | Question | Exemple |
 |---|---|---|
-| `requirement` | which requirement? | `ARCH-001` |
-| `subject` | verified on what? | `src/`, 10 files, `sha256:cdd324e7312c…` |
-| `producer` | by which producer? | `golden-thread 0.2.0` |
-| `method` | with which method? | `layered_dependencies`, profile `academy-spells`, policy `v0.1.0 @ 651f644a18bf` |
-| `result` | with which result? | `PASS`, or `FAIL` with the exact violations |
-| `timestamp` | when? | `2026-08-28T07:53:51+00:00` |
+| `requirement` | quelle exigence ? | `ARCH-001` |
+| `subject` | vérifiée sur quoi ? | `src/`, 10 fichiers, `sha256:cdd324e7312c…` |
+| `producer` | par quel producteur ? | `golden-thread 0.2.0` |
+| `method` | avec quelle méthode ? | `layered_dependencies`, profil `academy-spells`, policy `v0.1.0 @ 651f644a18bf` |
+| `result` | avec quel résultat ? | `PASS`, ou `FAIL` avec les violations exactes |
+| `timestamp` | quand ? | `2026-08-28T07:53:51+00:00` |
 
-Requirement and rule are one-to-one: a rule is how a requirement is made
-checkable. There is no confidence score, no signature, no central store and no
-evidence taxonomy.
+Exigence et règle sont en relation un-à-un : une règle rend une exigence
+vérifiable. Il n’existe ni score de confiance, ni signature, ni stockage central,
+ni taxonomie de preuves.
 
-Records live in `.golden-thread/evidence.json`, which holds the **latest**
-record per requirement. It is a current-state file, not an audit journal, and
-it is disposable: `verify` rebuilds it.
+Les enregistrements vivent dans `.golden-thread/evidence.json`, qui conserve le
+**dernier** enregistrement par exigence. C’est un fichier d’état courant, pas un
+journal d’audit, et il est jetable : `verify` le reconstruit.
 
-### Where each artefact lives, and why
+### Où vit chaque artefact, et pourquoi
 
     golden-thread.json                  committed    which policy this project is on
     golden-thread-attestations.json     committed    what we were told, and by whom
     .golden-thread/source/              disposable   the policy cache
     .golden-thread/evidence.json        disposable   what the tool proved
 
-The split is by **what can be rebuilt**. `verify` reproduces the evidence and
-the manifest reproduces the cache. An attestation is the one artefact in this
-system nothing can regenerate: delete it and the only recourse is to go and ask
-a person again.
+La séparation repose sur **ce qui peut être reconstruit**. `verify` reproduit
+les preuves et le manifest reproduit le cache. Une attestation est le seul
+artefact de ce système que rien ne peut régénérer : si vous la supprimez, il
+faut retourner demander à une personne.
 
-It also has to *travel*. Spike 4 kept attestations inside `.golden-thread/`,
-and the GitLab pipeline is what exposed that as a bug: a runner that cannot see
-the approval reports agreed work as un-agreed, which is true of that machine
-and false of the project. The contrast showed up inside a single pipeline run —
-`DOC-001` passed, because its claim lives in a committed Markdown file, while
-`DOR-001` and `COOKIE-001` failed, because theirs did not.
+Elle doit aussi *voyager*. Spike 4 conservait les attestations dans
+`.golden-thread/`, et la pipeline GitLab a révélé le problème : un runner qui ne
+voit pas l’approbation signale comme non accepté un travail pourtant accepté,
+ce qui est vrai pour cette machine mais faux pour le projet. Le contraste est
+apparu dans une seule exécution de pipeline : `DOC-001` passait parce que son
+affirmation vit dans un fichier Markdown commité, tandis que `DOR-001` et
+`COOKIE-001` échouaient parce que les leurs n’y figuraient pas.
 
-Committing an attestation makes it visible to CI and visible in review. It does
-**not** make it authenticated, and nothing here claims otherwise.
+Commiter une attestation la rend visible à la CI et pendant la review. Cela ne
+la rend **pas authentifiée**, et rien ici ne prétend le contraire.
 
-### Freshness: the work and the requirement, independently
+### Fraîcheur : le travail et l’exigence, indépendamment
 
-Freshness has two independent axes. A record remains current only while both
-the subject it describes and the requirement it answered are unchanged.
+La fraîcheur possède deux axes indépendants. Un enregistrement reste courant
+uniquement tant que le sujet qu’il décrit et l’exigence à laquelle il répond
+restent tous deux inchangés.
 
-The **subject digest** is a `sha256` over the sorted `(relative path,
-sha256(content))` pairs of the exact files the check engine read. `status`
-re-identifies that subject. Editing, adding or removing one of those files makes
-the evidence STALE; changing an unrelated file does not.
+Le **digest du sujet** est un `sha256` calculé sur les paires triées
+`(chemin relatif, sha256(contenu))` des fichiers exacts lus par l’engine de
+vérification. `status` réidentifie ce sujet. Modifier, ajouter ou supprimer l’un
+de ces fichiers rend la preuve STALE ; modifier un fichier sans rapport ne
+l’invalide pas.
 
-The **requirement fingerprint** identifies the semantics of the individual
-requirement: its rule data plus policy artefacts it explicitly pins, such as a
-readiness rubric. A move from `v0.2.0` to `v0.3.0`, or from one profile to
-another, does not invalidate evidence merely because the container changed. If
-`DOR-001` and its rubric are unchanged, its evidence can remain current while
-the new profile adds `TEST-001`, `SEC-001`, `DOC-001` and `COOKIE-001`.
+Le **requirement fingerprint** identifie la sémantique de l’exigence
+individuelle : les données de sa règle ainsi que les artefacts de policy qu’elle
+référence explicitement, par exemple une readiness rubric. Passer de `v0.2.0` à
+`v0.3.0`, ou d’un profil à un autre, n’invalide pas une preuve simplement parce
+que son conteneur a changé. Si `DOR-001` et sa rubric sont identiques, sa preuve
+peut rester valable pendant que le nouveau profil ajoute `TEST-001`, `SEC-001`,
+`DOC-001` et `COOKIE-001`.
 
-The Git ref, resolved revision and profile are still recorded as provenance.
-They are not the identity of a requirement. For evidence written before
-`requirementFingerprint` existed, Golden Thread keeps the old conservative
-behaviour: a profile or policy revision change makes that legacy record STALE
-because semantic equivalence cannot be established after the fact.
+La ref Git, la revision résolue et le profil restent enregistrés comme
+provenance. Ils ne constituent pas l’identité d’une exigence. Pour les preuves
+écrites avant l’existence de `requirementFingerprint`, Golden Thread conserve
+le comportement conservateur historique : un changement de profil ou de
+revision de policy rend cet ancien enregistrement STALE, car l’équivalence
+sémantique ne peut plus être établie après coup.
 
-A Git revision on the subject is descriptive only. A worktree with uncommitted
-work is not identified by its HEAD, and a project is not always its own
-repository.
+Une revision Git enregistrée sur le sujet est uniquement descriptive. Un
+worktree avec des modifications non commitées n’est pas identifié par son HEAD,
+et un projet n’est pas nécessairement son propre dépôt.
 
-## Path status
+## Statut du chemin
 
-| Status | Meaning | Exit |
+| Statut | Signification | Sortie |
 |---|---|---|
-| `INCOMPLETE` | nothing has been verified yet | 0 |
-| `ON PATH` | every requirement has current, passing evidence | 0 |
-| `OFF PATH` | a requirement failed, on evidence that still applies | 1 |
-| `NOT READY` | a readiness requirement is not satisfied | 4 |
-| `STALE` | evidence exists but no longer describes the current subject or requirement | 3 |
+| `INCOMPLETE` | rien n’a encore été vérifié | 0 |
+| `ON PATH` | chaque exigence possède une preuve courante et passante | 0 |
+| `OFF PATH` | une exigence a échoué sur une preuve encore applicable | 1 |
+| `NOT READY` | une exigence de readiness n’est pas satisfaite | 4 |
+| `STALE` | une preuve existe mais ne décrit plus le sujet ou l’exigence courante | 3 |
 
-`NOT READY` outranks `OFF PATH`. A readiness requirement is a precondition on
-the work itself, and announcing "the code you wrote has an architecture
-violation" while the mission was never agreed answers the second question
-first. Both requirements are still listed individually — only the headline
-changes.
+`NOT READY` l’emporte sur `OFF PATH`. Une exigence de readiness est une
+précondition du travail lui-même ; annoncer « le code que vous avez écrit viole
+une règle d’architecture » alors que la mission n’a jamais été acceptée répond
+à la seconde question avant la première. Les deux exigences restent détaillées
+individuellement : seul le statut global change.
 
-Below that, the original rule stands: a confirmed failure outranks staleness;
-unknown outranks a comfortable assumption. `ON PATH` is only claimed when every
-requirement is both current and passing.
+Ensuite, la règle originale demeure : un échec confirmé l’emporte sur la
+staleness ; l’inconnu l’emporte sur une hypothèse rassurante. `ON PATH` n’est
+affirmé que lorsque chaque exigence est à la fois courante et passante.
 
-`NOT READY` is not a gate either. A Definition of Ready that blocked would be a
-different tool: nothing here stops a developer writing code against an
-un-agreed mission. What it stops is that being *implicit*.
+`NOT READY` n’est pas non plus un gate. Une Definition of Ready bloquante serait
+un autre outil : rien ici n’empêche un développeur d’écrire du code sur une
+mission non acceptée. Golden Thread empêche simplement que cet état reste
+*implicite*.
 
-`OFF PATH` is a signal, not a gate. `verify` exits non-zero and says so plainly,
-but nothing here blocks a commit, a build, or a developer. Leaving the golden
-path stays possible; what Golden Thread guarantees is that the deviation is
-explicit rather than silent. `STALE` is deliberately *not* exit 1: "a rule
-failed" and "we do not know" are different facts, and conflating them is the
-kind of lie this spike exists to remove.
+`OFF PATH` est un signal, pas un gate. `verify` renvoie un code non nul et le dit
+explicitement, mais rien ici ne bloque un commit, un build ou un développeur.
+Quitter le golden path reste possible ; Golden Thread garantit que la déviation
+est explicite plutôt que silencieuse. `STALE` n’utilise volontairement *pas* le
+code de sortie 1 : « une règle a échoué » et « nous ne savons pas » sont deux
+faits différents, et les confondre serait exactement le type de mensonge que ce
+spike cherche à éliminer.
 
-## GitLab CI: the verification, replayed by something that cannot think
+## GitLab CI : la vérification rejouée par quelque chose qui ne pense pas
 
     .gitlab-ci.yml
 
-One job. It installs the project's toolchain, restores the **pinned** policy
-from the committed manifest, runs `golden-thread verify`, and keeps the
-machine-readable report as an artifact.
+Un seul job. Il installe la toolchain du projet, restaure la policy **pinnée** à
+partir du manifest commité, exécute `golden-thread verify` et conserve le rapport
+machine-readable comme artefact.
 
-**No agent is involved.** No Claude Code, no model, no network call to anything
-that thinks. That independence is the whole point: evidence produced inside an
-agent's session is evidence about that session. The pipeline does not import
-the adapter, does not read a skill, and would run identically on a machine
-where Claude Code has never been installed.
+**Aucun agent n’intervient.** Pas de Claude Code, pas de modèle, aucun appel
+réseau vers quoi que ce soit qui pense. Cette indépendance est le point central :
+une preuve produite à l’intérieur de la session d’un agent est une preuve sur
+cette session. La pipeline n’importe pas l’adapter, ne lit aucune skill et
+s’exécuterait de manière identique sur une machine où Claude Code n’a jamais été
+installé.
 
-**It never runs `init`.** `init` re-resolves a ref, and a tag can move. The job
-reads the commit recorded in `golden-thread.json` and restores exactly that,
-printing it so the log says which policy this run was held to.
+**Elle n’exécute jamais `init`.** `init` résout de nouveau une ref, et un tag peut
+bouger. Le job lit le commit enregistré dans `golden-thread.json` et restaure
+exactement celui-ci, en l’affichant pour que le log indique clairement à quelle
+policy l’exécution est tenue.
 
-**The artifact is kept `when: always`.** The run that fails is the run whose
-report somebody will want to read.
+**L’artefact est conservé avec `when: always`.** L’exécution qui échoue est
+précisément celle dont quelqu’un voudra consulter le rapport.
 
-### Computing the state, and deciding to block, are two different things
+### Calculer l’état et décider de bloquer sont deux choses différentes
 
-The pipeline keeps them visibly apart, in one job:
+La pipeline les garde visiblement séparées dans un même job :
 
     # 1. compute the state. Never fails the job on a verdict.
     - |
@@ -406,45 +433,46 @@ The pipeline keeps them visibly apart, in one job:
     # 3. this project's policy. THIS is the line that blocks a merge.
     - exit $gt_exit
 
-Golden Thread computes `OFF PATH`. It does not ask for a red pipeline. The
-`exit` line does, and it is one editable line with a comment saying so. A
-project pinning the same golden path may choose otherwise — that is what "not a
-prison" means once it reaches a pipeline.
+Golden Thread calcule `OFF PATH`. Il ne demande pas une pipeline rouge. La ligne
+`exit` le fait, et il s’agit d’une seule ligne modifiable avec un commentaire
+qui le précise. Un projet qui pinne le même golden path peut choisir autre chose :
+c’est ce que « pas une prison » signifie une fois arrivé dans la pipeline.
 
-A failing job says which of the two happened:
+Un job en échec indique lequel des deux événements s’est produit :
 
     PIPELINE FAILED BY THIS PROJECT'S POLICY.
     Golden Thread computed a state and did not ask for this.
     The line in .gitlab-ci.yml that propagates its exit code did.
     A project pinning the same golden path may choose otherwise.
 
-and, distinctly, for exit code 2:
+et, séparément, pour le code de sortie 2 :
 
     PIPELINE FAILED: golden-thread could not run at all.
     This is not a verdict about the code. Nothing was verified.
 
-### Running the pipeline without GitLab
+### Exécuter la pipeline sans GitLab
 
     ./demo/run-ci-locally.sh
 
-This is not a simulation. `demo/gitlab_job.py` reads `.gitlab-ci.yml`, takes
-the `image`, `before_script` and `script` GitLab would run, assembles them into
-one shell script the way the runner does — so a variable set on one line is
-still set on the next — and runs them **in that image, under Docker**. Break
-the pipeline and this breaks with it. A demo that reimplemented the steps in
-bash would keep working after the pipeline stopped.
+Ce n’est pas une simulation. `demo/gitlab_job.py` lit `.gitlab-ci.yml`, récupère
+`image`, `before_script` et `script` tels que GitLab les exécuterait, les assemble
+dans un script shell unique comme le fait le runner — une variable définie sur
+une ligne reste donc disponible à la suivante — puis les exécute **dans cette
+image, sous Docker**. Cassez la pipeline, et ce script cassera avec elle. Une
+démo qui réimplémenterait les étapes en bash continuerait au contraire de
+fonctionner alors que la pipeline réelle serait en panne.
 
-It stages a clean copy of the repository so nothing it does touches your
-working tree, and refuses to run at all without Docker rather than substituting
-something that merely resembles the image.
+Le script prépare une copie propre du dépôt afin de ne rien modifier dans votre
+worktree, et refuse complètement de s’exécuter sans Docker plutôt que de
+substituer un environnement qui lui ressemble seulement.
 
-One fidelity gap, stated because it matters for what this proves: GitLab checks
-out a commit, while this helper stages the current working tree. For a faithful
-rehearsal, commit the delivery state first — including
-`demo-spellbook/golden-thread-attestations.json`. The helper does not pretend an
-uncommitted working tree is the same thing as a GitLab checkout.
+Une différence de fidélité reste explicitée parce qu’elle compte pour ce que
+cette démonstration prouve : GitLab checkout un commit, tandis que ce helper
+prépare le worktree courant. Pour une répétition fidèle, commitez d’abord l’état
+de livraison — y compris `demo-spellbook/golden-thread-attestations.json`. Le
+helper ne prétend pas qu’un worktree non commité équivaut à un checkout GitLab.
 
-## Layout
+## Structure
 
     .gitlab-ci.yml           the pipeline: verify, report, and one line that decides to block
 
@@ -506,35 +534,37 @@ uncommitted working tree is the same thing as a GitLab checkout.
 
     demo/                    the demonstration
 
-Policy and engine are separate on purpose. The corporate repository ships rules
-as data, so a Git tag pins the *policy* a team is held to, independently of the
-tool version they run.
+Policy et engine sont volontairement séparés. Le dépôt corporate livre les
+règles comme données : un tag Git pinne donc la *policy* à laquelle une équipe
+est tenue, indépendamment de la version de l’outil qu’elle utilise.
 
-`verify` produces evidence; `status` only reads it. Re-identifying a subject and
-recomputing a requirement fingerprint are not producing evidence: `status` runs
-no check, it establishes whether what was recorded still applies.
+`verify` produit des preuves ; `status` les lit seulement. Réidentifier un sujet
+et recalculer un requirement fingerprint ne produit pas de preuve : `status`
+n’exécute aucun check, il détermine uniquement si ce qui a été enregistré
+s’applique encore.
 
-## Reproducing the demonstration
+## Reproduire la démonstration
 
-Three demonstrations. Spike 1–2 — attach, verify, invalidate, repair:
+Trois démonstrations. Spike 1–2 — attacher, vérifier, invalider, réparer :
 
     ./demo/run-demo.sh
 
-Spike 4 — the Definition of Ready, from NOT READY to READY:
+Spike 4 — la Definition of Ready, de NOT READY à READY :
 
     ./demo/run-dor-demo.sh
 
-Spike 5 — the Definition of Done, every failure path, and the pipeline:
+Spike 5 — la Definition of Done, tous les chemins d’échec et la pipeline :
 
     ./demo/run-dod-demo.sh
 
-That last one walks the project through green, an architecture violation, a
-real security defect, a missing attestation, repair after each, and finishes by
-running the actual GitLab job in Docker. It needs Docker and network access on
-first run: `demo/install-toolchain.sh` builds a disposable venv with pytest and
-bandit in `.demo/venv`, and the pipeline pulls `python:3.12-slim`.
+La dernière fait passer le projet par un état vert, une violation
+d’architecture, une vraie faille de sécurité, une attestation manquante, une
+réparation après chaque cas, puis termine en exécutant le vrai job GitLab dans
+Docker. Docker et un accès réseau sont nécessaires lors de la première
+exécution : `demo/install-toolchain.sh` construit un venv jetable avec pytest et
+bandit dans `.demo/venv`, et la pipeline télécharge `python:3.12-slim`.
 
-Or step by step, from the repository root:
+Ou, étape par étape, depuis la racine du dépôt :
 
     # 0. publish the corporate Golden Thread as a tagged Git repository.
     #    v0.1.0 is the golden path before the DoR; v0.2.0 adds it.
@@ -592,7 +622,7 @@ Or step by step, from the repository root:
 
     git checkout demo-spellbook/src/spells/protection/shield.py
 
-### The Definition of Ready, step by step
+### La Definition of Ready, étape par étape
 
     # 1. attach to the profile that enforces a DoR
     ./golden-thread-cli/bin/golden-thread -C demo-spellbook init \
@@ -650,7 +680,7 @@ Or step by step, from the repository root:
 
     git checkout demo-spellbook/MISSION.md
 
-### The Definition of Done, step by step
+### La Definition of Done, étape par étape
 
     # 0. the corporate golden path, and the project's own toolchain
     ./demo/publish-source.sh          # v0.1.0, v0.2.0, v0.3.0
@@ -697,10 +727,10 @@ Or step by step, from the repository root:
     #    FAIL   COOKIE-001 - attested about a different version of the work
     #    PATH STATUS   OFF PATH                                 exit 1
 
-One edit, three requirements. `ARCH-001` still passes — the import graph is
-untouched — while the analyser finds the defect, the stamp stops describing the
-code, and the attestation stops describing the work. A claim is tied to what it
-was made about, for a person exactly as for a rule.
+Une modification, trois exigences. `ARCH-001` continue de passer car le graphe
+d’import n’a pas changé ; l’analyseur trouve la faille, le stamp ne décrit plus
+le code et l’attestation ne décrit plus le travail. Une affirmation est liée à
+ce qu’elle concernait, qu’elle provienne d’une personne ou d’une règle.
 
     # 7. repair, re-stamp, re-attest
     git checkout demo-spellbook/src/spells/protection/ward.py
@@ -708,14 +738,14 @@ was made about, for a person exactly as for a rule.
     # 8. and the pipeline replays the whole thing, with no agent
     ./demo/run-ci-locally.sh
 
-`golden-thread` is also installable as a normal console script:
+`golden-thread` peut aussi être installé comme console script standard :
 
     pip install -e golden-thread-cli && golden-thread --help
 
-## The machine-readable report
+## Le rapport machine-readable
 
-`--json` on `status` or `verify` prints one document to stdout, carrying the
-same evidence the human output describes:
+`--json` sur `status` ou `verify` écrit un document unique sur stdout, contenant
+les mêmes preuves que la sortie humaine :
 
     {
       "reportVersion": 1,
@@ -737,30 +767,32 @@ same evidence the human output describes:
       ]
     }
 
-`reportedStatus` is what may be believed today. The recorded `result.status`
-is still there, but as history — never as the answer.
+`reportedStatus` représente ce que l’on peut croire aujourd’hui. Le
+`result.status` enregistré reste présent, mais comme historique — jamais comme
+réponse actuelle.
 
 ## Tests
 
-Run the suites separately:
+Exécutez les suites séparément :
 
     python3 -m pytest golden-thread-cli/tests -q
     python3 -m pytest claude-code-adapter/tests -q
 
-Both directories contain a package-less `conftest.py`; combining them in one
-pytest invocation can bind the second suite to fixtures from the first. The
-adapter README documents the same constraint.
+Les deux répertoires contiennent un `conftest.py` sans package. Les combiner
+dans une seule invocation pytest peut lier la seconde suite aux fixtures de la
+première. Le README de l’adapter documente la même contrainte.
 
-The security suite runs bandit for real and skips that integration check — it
-does not fake it — when bandit is not installed. A parser that agrees with its
-own fixture and disagrees with the tool proves nothing.
+La suite de sécurité exécute réellement bandit et ignore ce test d’intégration —
+elle ne le simule pas — lorsque bandit n’est pas installé. Un parser qui est
+d’accord avec sa propre fixture mais pas avec l’outil ne prouve rien.
 
-`test_record_compatibility.py` loads literal older evidence shapes. Additive
-fields such as `findings`, `blocking`, `command` and
-`requirementFingerprint` keep conservative defaults so old records still load;
-legacy records without a fingerprint retain conservative freshness semantics.
+`test_record_compatibility.py` charge littéralement d’anciennes formes de
+preuves. Les champs additifs tels que `findings`, `blocking`, `command` et
+`requirementFingerprint` conservent des valeurs par défaut conservatrices afin
+que les anciens enregistrements restent lisibles ; les enregistrements legacy
+sans fingerprint gardent une sémantique de fraîcheur conservatrice.
 
-## Exit codes
+## Codes de sortie
 
     0   ON PATH, or INCOMPLETE (nothing verified yet)
     1   OFF PATH
