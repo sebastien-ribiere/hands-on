@@ -53,12 +53,10 @@ class Producer:
 class Method:
     """How a result was reached.
 
-    `command` is additive and defaults to empty, so records written before it
-    existed still load. It is the exact argv the policy told the engine to run,
-    and it is part of the method for a plain reason: "external_command" does
-    not describe a method. Running the test suite and running something else
-    are the same engine and different methods, and a reader who is only shown
-    the engine name cannot tell which one produced the verdict.
+    `command` and `requirement_fingerprint` are additive and default to empty,
+    so records written by earlier spikes still load. The fingerprint identifies
+    the requirement semantics independently of the profile/tag that happened to
+    contain it when the evidence was produced.
     """
 
     check: str
@@ -66,6 +64,7 @@ class Method:
     policy_ref: str
     policy_revision: str
     command: tuple[str, ...] = ()
+    requirement_fingerprint: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -74,6 +73,7 @@ class Method:
             "policyRef": self.policy_ref,
             "policyRevision": self.policy_revision,
             "command": list(self.command),
+            "requirementFingerprint": self.requirement_fingerprint,
         }
 
     @staticmethod
@@ -84,6 +84,7 @@ class Method:
             policy_ref=data["policyRef"],
             policy_revision=data["policyRevision"],
             command=tuple(data.get("command", [])),
+            requirement_fingerprint=data.get("requirementFingerprint", ""),
         )
 
     def __str__(self) -> str:
@@ -137,7 +138,7 @@ class Freshness:
     """Whether an evidence record still describes what is in front of us.
 
     Establishing this is not producing evidence: nothing is re-checked, the
-    subject is merely re-identified and the method compared to the manifest.
+    subject is merely re-identified and the requirement identity compared.
     """
 
     state: str
@@ -158,12 +159,22 @@ class Freshness:
         }
 
 
-def assess(evidence: Evidence, current: Subject, manifest) -> Freshness:
-    """Compare a record against the project and the policy it is pinned to.
+def assess(
+    evidence: Evidence,
+    current: Subject,
+    current_requirement_fingerprint: str,
+    manifest,
+) -> Freshness:
+    """Compare a record against the current subject and requirement semantics.
 
-    Two axes, both plain equality on recorded fields:
-      - the subject changed  -> the record describes code that no longer exists
-      - the method changed   -> the record was produced under a different policy
+    New records are invalidated by two things only:
+      - the subject changed      -> the record describes different work
+      - the requirement changed  -> the contract/method it answered changed
+
+    Profile/tag/revision are still provenance, but no longer invalidate by
+    themselves. For legacy records that predate requirement fingerprints, keep
+    the old conservative behaviour: a policy/profile move makes them stale
+    because we cannot prove semantic compatibility after the fact.
     """
     reasons: list[str] = []
 
@@ -173,16 +184,32 @@ def assess(evidence: Evidence, current: Subject, manifest) -> Freshness:
             f"{evidence.subject.short_digest} -> {current.file_count} file(s) "
             f"{current.short_digest}"
         )
-    if evidence.method.policy_revision != manifest.revision:
-        reasons.append(
-            f"the Golden Thread version changed: {evidence.method.policy_ref} "
-            f"@ {evidence.method.policy_revision[:12]} -> {manifest.ref} "
-            f"@ {manifest.short_revision}"
-        )
-    if evidence.method.profile != manifest.profile:
-        reasons.append(
-            f"the profile changed: {evidence.method.profile} -> {manifest.profile}"
-        )
+
+    recorded_fingerprint = evidence.method.requirement_fingerprint
+    if recorded_fingerprint:
+        if recorded_fingerprint != current_requirement_fingerprint:
+            reasons.append(
+                "the requirement changed: "
+                f"{recorded_fingerprint[:19]} -> "
+                f"{current_requirement_fingerprint[:19]}"
+            )
+    else:
+        # Backward compatibility is intentionally conservative. Older evidence
+        # carries only policy/profile provenance, so those are the only signals
+        # available to decide whether the method may have changed.
+        if evidence.method.policy_revision != manifest.revision:
+            reasons.append(
+                "legacy evidence has no requirement fingerprint and the Golden "
+                "Thread version changed: "
+                f"{evidence.method.policy_ref} @ "
+                f"{evidence.method.policy_revision[:12]} -> {manifest.ref} "
+                f"@ {manifest.short_revision}"
+            )
+        if evidence.method.profile != manifest.profile:
+            reasons.append(
+                "legacy evidence has no requirement fingerprint and the profile "
+                f"changed: {evidence.method.profile} -> {manifest.profile}"
+            )
 
     return Freshness(
         state=STALE if reasons else FRESH,
