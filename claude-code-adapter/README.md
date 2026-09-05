@@ -15,7 +15,7 @@ contract Spike 1 and Spike 2 already shipped:
 
 That one command is the whole interface. It answers, in one JSON document:
 which Golden Thread (`ref`, `profile`), and the current `pathStatus`
-(`ON PATH` / `OFF PATH` / `STALE` / `INCOMPLETE`) with, per requirement, the
+(`ON PATH` / `OFF PATH` / `NOT READY` / `STALE` / `INCOMPLETE`) with, per requirement, the
 exact reason it isn't `PASS` (`freshness.reasons`, or the `violations` in
 `evidence.result`).
 
@@ -175,8 +175,7 @@ anything about this project." --permission-mode acceptEdits
 
     python3 -m pytest claude-code-adapter/tests -q
 
-13 tests: SessionStart's context in each path state, PreToolUse's silence on
-`ON PATH` and its message (never a denial) in every other state, and the two
+The suite covers SessionStart context, PreToolUse signalling, rendering and the
 structural guards described above.
 
 Run this suite and `golden-thread-cli/tests` as two separate `pytest`
@@ -191,10 +190,9 @@ Nothing in `golden-thread-cli/` was touched by this spike.
 
     python3 -m pytest golden-thread-cli/tests -q
 
-51 tests, unchanged, still green -- including
-`test_core_is_harness_agnostic.py`, which greps the core's source for any
-reference to `claude`, `anthropic`, `.mcp`, `copilot` or `cursor` and fails
-if it finds one.
+The core suite includes `test_core_is_harness_agnostic.py`, which greps the
+core's source for any reference to `claude`, `anthropic`, `.mcp`, `copilot` or
+`cursor` and fails if it finds one.
 
 ## Known limitation, not built here
 
