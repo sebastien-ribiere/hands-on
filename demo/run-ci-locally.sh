@@ -9,9 +9,9 @@
 # pipeline's steps in bash would keep working after the pipeline stopped, which
 # is the failure mode worth spending a bit of parsing on to avoid.
 #
-# It runs against a clean copy of the repository in .demo/ci-workspace, so the
-# job starts from the same state a fresh clone would, and nothing it does
-# touches your working tree.
+# It runs against a clean staged copy of the current working tree in
+# .demo/ci-workspace and removes disposable local Golden Thread state before
+# running. GitLab itself checks out a commit; see the note printed below.
 #
 # Usage:
 #   demo/run-ci-locally.sh              # the job as it stands
@@ -67,12 +67,13 @@ cp "${generated}" "${workspace}/ci-job.sh"
 echo "staged in ${workspace}"
 cat <<'EOF'
 
-Note, because it matters for what this proves: GitLab checks out a commit,
-this stages your working tree. The difference shows up for exactly one file --
-demo-spellbook/golden-thread-attestations.json, which a real project commits
-and this demo gitignores because its content is rewritten every run. A real
-pipeline sees it because it is in the repository; this one sees it because it
-is on disk.
+Note, because it matters for what this proves: GitLab checks out a commit;
+this helper stages the current working tree. Human attestations are now a
+versionable project artefact, so the conference path should commit the final
+manifest/mission/code/docs/attestations before claiming that the local replay
+represents what a real GitLab runner would receive. The helper intentionally
+keeps this working-tree-vs-commit distinction visible rather than pretending
+it is byte-for-byte a GitLab checkout.
 EOF
 
 step "3. Run the job in ${image}"
