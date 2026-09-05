@@ -115,7 +115,9 @@ def deviation_lines(report: dict[str, Any] | None) -> list[str] | None:
             "GOLDEN THREAD -- NOT READY",
             "This work has not met its Definition of Ready.",
             *(f"Missing: {m}" for m in missing),
-            "This does not stop you. It does mean nobody has agreed this yet.",
+            "Do not start implementation silently while NOT READY.",
+            "Either resolve the readiness gaps and re-assess, or ask the user to explicitly choose to continue off-path.",
+            "The hook still allows the edit: this is agent discipline, not a technical gate.",
             "Run: golden-thread readiness rubric",
         ]
 
