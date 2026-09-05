@@ -1,89 +1,94 @@
-# Golden Thread - corporate source
+# Golden Thread - source corporate
 
-Source of authority for the Golden Thread golden path.
+Source d’autorité du golden path Golden Thread.
 
-- `golden-thread.toml` - catalog: schema version, default profile
-- `profiles/<name>.toml` - which rules a profile enforces
-- `rules/<id>.toml` - declarative rule definitions
-- `rubrics/<id>-<version>.toml` - versioned rubrics an assessment is made against
+- `golden-thread.toml` - catalogue : version de schéma, profil par défaut
+- `profiles/<name>.toml` - règles imposées par un profil
+- `rules/<id>.toml` - définitions déclaratives des règles
+- `rubrics/<id>-<version>.toml` - rubrics versionnées utilisées pour les évaluations
 
-This repository contains **policy only**. The verification engine lives in the
-`golden-thread` CLI. That split is what makes a Git tag meaningful: consumers
-pin a version of the policy, not a version of the tool.
+Ce dépôt contient **uniquement la policy**. L’engine de vérification vit dans la
+CLI `golden-thread`. Cette séparation donne du sens à un tag Git : les projets
+consommateurs pinnent une version de la policy, pas une version de l’outil.
 
-## Profiles
+## Profils
 
     academy-spells         ARCH-001
     academy-spells-ready   DOR-001, ARCH-001
     academy-spells-done    DOR-001, TEST-001, ARCH-001, SEC-001, DOC-001, COOKIE-001
 
-Each is the previous one with more of the contract written down. Adopting one
-is a policy change published under a new tag, and a team adopts it by moving
-the ref they pin.
+Chaque profil reprend le précédent et formalise une partie supplémentaire du
+contrat. Adopter un profil correspond à un changement de policy publié sous un
+nouveau tag ; une équipe l’adopte en déplaçant la ref qu’elle pinne.
 
-There is no separate "Definition of Ready" or "Definition of Done" object in
-this schema, and there does not need to be one. A profile is the list of
-requirements a team is held to; the DoR and the DoD are that list read at two
-moments. What distinguishes them in a report is not a label written here but
-what the engines can do: a readiness requirement reports NOT READY, because the
-work was never agreed, and everything else reports OFF PATH, because something
-in the work is not done.
+Il n’existe pas d’objet séparé « Definition of Ready » ou « Definition of Done »
+dans ce schéma, et il n’en faut pas. Un profil est la liste des exigences
+auxquelles une équipe est soumise ; la DoR et la DoD sont cette liste observée à
+deux moments différents. Ce qui les distingue dans un rapport n’est pas un
+label écrit ici, mais le comportement des engines : une exigence de readiness
+rapporte `NOT READY`, car le travail n’a jamais été accepté ; les autres
+rapportent `OFF PATH`, car quelque chose dans le travail n’est pas terminé.
 
-## Requirements, and what each kind of evidence is worth
+## Exigences et valeur de chaque type de preuve
 
-    ARCH-001     the project's real import graph
-    TEST-001     a command this file names, and its exit code
-    SEC-001      bandit, and the severity threshold set in that rule
-    DOC-001      a digest stamp inside the documentation
-    COOKIE-001   a person's word, and nothing else
+    ARCH-001     le vrai graphe d’import du projet
+    TEST-001     une commande nommée ici, et son code de sortie
+    SEC-001      bandit, et le seuil de sévérité défini dans cette règle
+    DOC-001      un stamp de digest dans la documentation
+    COOKIE-001   la parole d’une personne, et rien de plus
 
-The last one is deliberately absurd, and it is load-bearing: every
-organisation's Definition of Done contains something no tool can establish, and
-a policy language that could only express the checkable would quietly drop
-those. Read `rules/COOKIE-001.toml` before removing it.
+La dernière est volontairement inattendue et joue un rôle essentiel : toutes
+les organisations ont dans leur Definition of Done quelque chose qu’aucun outil
+ne peut établir. Un langage de policy capable d’exprimer uniquement ce qui est
+vérifiable supprimerait silencieusement ces exigences. Lire
+`rules/COOKIE-001.toml` avant de la retirer.
 
-## Where the CLI ends and this repository begins
+## Où s’arrête la CLI et où commence ce dépôt
 
-Adding a *requirement* is a change here and a new tag. Adding a new *kind* of
-check is a change to the CLI, because an engine is code. v0.1.0 and v0.2.0
-needed no CLI release at all; v0.3.0 introduced four requirements, two of which
-needed engines that did not exist.
+Ajouter une *exigence* est un changement dans ce dépôt et entraîne un nouveau
+tag. Ajouter un nouveau *type* de vérification est un changement dans la CLI,
+car un engine est du code. `v0.1.0` et `v0.2.0` n’ont nécessité aucune nouvelle
+release de CLI ; `v0.3.0` a introduit quatre exigences, dont deux nécessitaient
+des engines qui n’existaient pas encore.
 
-That boundary is worth keeping visible rather than blurring: a rule declaring
-`check = "security_scan"` is naming something the tool must already know how to
-do. It cannot invent one in TOML.
+Cette frontière mérite de rester visible. Une règle qui déclare
+`check = "security_scan"` désigne quelque chose que l’outil doit déjà savoir
+faire. TOML ne peut pas inventer un engine.
 
-## Rules may name a command, and it is an argv list
+## Les règles peuvent nommer une commande, sous forme de liste argv
 
-`TEST-001` and `SEC-001` declare what to run:
+`TEST-001` et `SEC-001` déclarent quoi exécuter :
 
     command = ["python3", "-m", "pytest", "-q", "tests"]
 
-A list, never a string. No shell is involved, so there is nothing to quote,
-nothing to expand, and no way for a policy file to smuggle a second command
-past a reader. The argv is recorded in the evidence, so what ran appears in the
-report rather than only in this repository.
+Une liste, jamais une chaîne. Aucun shell n’est impliqué : rien à quoter, rien à
+expanser, aucun moyen pour un fichier de policy de glisser une seconde commande
+à l’insu du lecteur. L’argv est enregistré dans la preuve, afin que ce qui a été
+exécuté apparaisse dans le rapport et pas seulement dans ce dépôt.
 
-This is the point where adopting a golden path means running its verifications.
-That was already true of a `.gitlab-ci.yml` include; it is stated here rather
-than left implied.
+C’est ici qu’adopter un golden path signifie accepter d’exécuter ses
+vérifications. C’était déjà vrai pour un include `.gitlab-ci.yml` ; ici c’est
+explicite plutôt qu’implicite.
 
-## Rubrics are versioned twice over
+## Les rubrics sont versionnées deux fois
 
-By file name, so publishing a revision is an added file and a one-line change
-to the rule that pins it -- both visible in a diff, with the old rubric still
-present for anything that cites it. And by the `version` field inside the file,
-which is what every assessment records.
+Par leur nom de fichier : publier une nouvelle version revient à ajouter un
+fichier et modifier une ligne dans la règle qui le pinne, tous deux visibles dans
+un diff, tandis que l’ancienne rubric reste présente pour les éléments qui la
+référencent encore. Et par le champ `version` contenu dans le fichier, enregistré
+par chaque évaluation.
 
-That second half is what makes a score auditable. An assessment made under
-`spec-readiness@1.0.0` is never silently reinterpreted as a score under
-`1.1.0`: it stops applying and says which version it was made under.
+Ce deuxième niveau rend le score auditable. Une évaluation produite sous
+`spec-readiness@1.0.0` n’est jamais silencieusement réinterprétée comme un score
+selon `1.1.0` : elle cesse de s’appliquer et indique sous quelle version elle a
+été produite.
 
-A rubric also carries its own `caveat`, printed verbatim by the CLI rather than
-paraphrased. The statement that a readiness score is an assessment and not a
-measurement is part of the policy, not a disclaimer the tool adds.
+Une rubric porte également son propre `caveat`, affiché textuellement par la CLI
+plutôt que paraphrasé. Le fait qu’un score de readiness soit une évaluation et
+non une mesure fait partie de la policy ; ce n’est pas un avertissement ajouté
+par l’outil.
 
-Consumed by projects with:
+Utilisé par les projets avec :
 
     golden-thread init --source <this-repo> --ref v0.3.0 \
         --profile academy-spells-done
