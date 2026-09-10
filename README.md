@@ -1,5 +1,8 @@
 # Golden Thread
 
+**Participer au hands-on :** [guide pratique de l’apprenti](GUIDE-PARTICIPANT.md).
+Pour préparer l’environnement Docker : [démarrer le lab](LAB.md).
+
 Un golden path qu’une organisation peut distribuer, versionner et vérifier.
 
 **Spike 1** a validé la vertical slice : un projet se rattache à une version
