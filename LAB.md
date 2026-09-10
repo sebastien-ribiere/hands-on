@@ -1,5 +1,8 @@
 # Golden Thread — démarrer le lab
 
+Une fois connecté, poursuivez avec le [guide participant](GUIDE-PARTICIPANT.md) :
+parcours, prompts, résultats attendus et points de reprise.
+
 Le parcours officiel s'exécute dans un conteneur. Le poste du participant n'a
 pas besoin de Python, de `golden-thread`, de Bandit, de pytest ni de scripts de
 setup locaux.
