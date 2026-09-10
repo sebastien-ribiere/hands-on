@@ -1,51 +1,50 @@
-# Mission: frost ward
+# Mission : Frost Ward
 
-## Problem
+## Problème
 
-Academy casters have no protection spell that works against cold damage.
-Today they improvise with `shield.cast()`, which draws on Air and does
-nothing against cold, so the caster believes they are protected when they
-are not. Two apprentice injuries last term came from exactly this.
+Les mages de l’Académie ne disposent d’aucun sort de protection contre les dégâts
+du froid. Ils improvisent avec `shield.cast()`, qui utilise Air et ne protège pas
+contre le froid : le mage se croit protégé alors qu’il ne l’est pas.
+Dans le scénario, deux apprentis se sont ainsi blessés au trimestre précédent.
 
-## Outcome
+## Résultat attendu
 
-A new `spells.protection.frost_ward` module exposing `cast(target: str) -> str`.
+Un nouveau module `spells.protection.frost_ward` exposant `cast(target: str) -> str`.
 
-Done when:
+La mission est terminée lorsque :
 
-- `frost_ward.cast()` returns a warded target, and is covered by a test;
-- `golden-thread verify` reports ARCH-001 as PASS on the resulting code;
-- the existing `shield` and `ward` spells are unchanged.
+- `frost_ward.cast(target)` renvoie un texte représentant la cible protégée, avec un test associé ;
+- `golden-thread verify` rapporte `ARCH-001 PASS` sur le code obtenu ;
+- les sorts existants `shield` et `ward` restent inchangés.
 
-## Scope
+## Périmètre
 
-In scope: the frost ward module and its test.
+Inclus : le module Frost Ward et son test.
 
-Out of scope: retiring the misuse of `shield` for cold (a separate mission),
-any change to the elements package, and any spell balancing.
+Exclus : supprimer les usages inadaptés de `shield` contre le froid (autre mission),
+modifier le package `elements` ou équilibrer les sorts.
 
-## Constraints
+## Contraintes
 
-- The academy-spells-ready profile enforces ARCH-001: a protection spell must
-  not depend on Fire. A frost ward draws on Water only, which ARCH-001 already
-  allows, so this mission does not require a policy change.
-- Python 3.11, standard library only, consistent with the rest of `src/`.
+- Le profil `academy-spells-ready` impose `ARCH-001` : une protection ne doit pas
+  dépendre de Fire. Frost Ward utilise uniquement Water, déjà autorisé ; aucune
+  modification de policy n’est nécessaire.
+- Python 3.11 ou supérieur, bibliothèque standard uniquement dans `src/`,
+  conformément au projet. Le lab s’exécute avec Python 3.12.
 
-## Decisions taken
+## Décisions prises
 
-Two questions were raised by the readiness assessment and answered by the
-mission owner:
+Le propriétaire de mission a répondu aux deux questions de readiness :
 
-1. **Which element does a frost ward draw from?** Water. Air was considered
-   and rejected: the chill effect belongs with Water in the Academy's
-   existing taxonomy, and Water is already an allowed dependency for the
-   protection layer.
-2. **Must it interoperate with the existing wards?** No. `frost_ward` stands
-   alone for this mission; a combined ward is deliberately out of scope.
+1. **Quel élément utilise Frost Ward ?** Water. Air a été envisagé puis écarté :
+   pour cette mission, le froid relève de Water dans la taxonomie de l’Académie.
+   Cold n’est pas un nouvel élément. Water est déjà autorisé dans les protections.
+2. **Doit-il interagir avec les protections existantes ?** Non. Frost Ward est
+   autonome ; une protection combinée est explicitement hors périmètre.
 
-## Open unknowns
+## Inconnues ouvertes
 
-- The exact wording of the returned string is not fixed. The implementer
-  chooses it; no caller depends on it yet.
+La formulation exacte du texte renvoyé est laissée à l’implémentation et sera
+illustrée par un test. Aucun appelant n’en dépend encore.
 
-No blockers.
+Aucun blocker.

@@ -1,6 +1,7 @@
 # Golden Thread — démarrer le lab
 
-Une fois connecté, poursuivez avec le [guide participant](GUIDE-PARTICIPANT.md) :
+Une fois connecté, ouvrez le [README participant](demo-spellbook/README.md),
+puis le [guide participant](GUIDE-PARTICIPANT.md) :
 parcours, prompts, résultats attendus et points de reprise.
 
 Le parcours officiel s'exécute dans un conteneur. Le poste du participant n'a
@@ -117,3 +118,18 @@ Le lab est volontairement plus restrictif qu'un montage de repository classique 
 
 Pour une répétition ou une conférence, utiliser de préférence un tag d'image
 immuable (`lab-<sha>`) plutôt que le tag mobile `lab`.
+
+## Lisibilité en salle
+
+Le shell du lab affiche un prompt sans couleur et désactive la coloration de
+`ls` pour éviter les répertoires bleu sombre sur fond noir. Cela ne change pas
+le thème de votre terminal ni celui de Claude Code.
+
+Dans Claude, utilisez `/theme` et choisissez un thème adapté au fond de votre
+terminal, éventuellement une variante accessible ([référence Claude Code](https://code.claude.com/docs/en/interactive-mode#theme-and-display)). Agrandissez le texte pour
+la projection. Les verdicts Golden Thread sont des libellés explicites
+(`PASS`, `FAIL`, `STALE`, `NOT READY`) : leur lecture ne dépend pas d’une couleur.
+
+Après mise à jour de l’image, un volume existant conserve son ancien workspace.
+Pour essayer la nouvelle version sans perdre votre travail, lancez-la avec un
+nouveau nom de volume workspace ; vous pouvez garder le volume Claude.

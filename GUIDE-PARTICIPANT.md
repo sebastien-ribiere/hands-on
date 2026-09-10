@@ -62,7 +62,7 @@ command -v claude
 claude
 ```
 
-**Résultat attendu.** Le répertoire est `/workspace/demo-spellbook`, les deux commandes sont disponibles et vous pouvez échanger avec Claude.
+**Ce que je dois observer.** Le répertoire est `/workspace/demo-spellbook`, les deux commandes sont disponibles et vous pouvez échanger avec Claude. Le [README participant](demo-spellbook/README.md) sert de point d’entrée court.
 
 **Action — CLAUDE.**
 
@@ -102,7 +102,7 @@ Le chemin `../.demo/golden-thread-source` y mène depuis le projet. Il reste ide
 >
 > Montre ensuite golden-thread.json et la preuve ARCH-001 dans .golden-thread/evidence.json. Relie requirement, subject, producer, method, result et timestamp aux données réelles.
 
-**Résultat attendu sur un workspace neuf.**
+**Ce que je dois observer sur un workspace neuf.**
 
 | Moment | Observation |
 |---|---|
@@ -121,7 +121,7 @@ Cette manipulation porte sur un fichier temporaire et se fait avant l’adoption
 
 > Nous faisons une expérience hors-piste explicite. Vérifie que src/spells/protection/path_probe.py n’existe pas ; s’il existe, arrête-toi. Crée ce fichier temporaire avec uniquement `from ..elements import fire`. Exécute golden-thread status puis golden-thread verify. Montre la dépendance interdite rapportée. Supprime uniquement le fichier temporaire que tu viens de créer, puis exécute à nouveau golden-thread verify.
 
-**Résultat attendu.** `STALE` après modification, puis `ARCH-001 FAIL / OFF PATH` après contrôle, puis `PASS / ON PATH` après retrait et nouvelle vérification. Le hook informe ; il n’empêche pas cette expérience.
+**Ce que je dois observer.** `STALE` après modification, puis `ARCH-001 FAIL / OFF PATH` après contrôle, puis `PASS / ON PATH` après retrait et nouvelle vérification. Le hook informe ; il n’empêche pas cette expérience.
 
 **Pour raccrocher.** Demandez à Claude de vérifier que le fichier temporaire a bien été retiré et de relancer `golden-thread verify`. N’effacez pas le cache pour masquer un résultat.
 
@@ -137,15 +137,21 @@ Cette manipulation porte sur un fichier temporaire et se fait avant l’adoption
 >
 > Exécute golden-thread verify, puis golden-thread readiness rubric. Montre les conditions de DOR-001 et explique pourquoi nous sommes NOT READY. N’implémente rien.
 
-**Résultat attendu.** `DOR-001 FAIL` et `NOT READY` : aucune évaluation recevable et aucune approbation humaine ne sont encore enregistrées.
+**Ce que je dois observer.** `DOR-001 FAIL` et `NOT READY` : aucune évaluation recevable et aucune approbation humaine ne sont encore enregistrées.
 
 La **Definition of Ready** fixe les conditions requises avant de commencer. Ici : score d’évaluation au moins égal à 8/10, aucun blocker, validation humaine obligatoire.
+
+**Montrer la vraie règle — CLAUDE.**
+
+> Lis `.golden-thread/source/rules/DOR-001.toml`, puis exécute `golden-thread readiness rubric`. Montre les valeurs `subject_files`, `rubric_version`, `min_score`, `max_blockers` et `requires_human_approval`, puis explique-les en français. Lis la policy attachée, pas une règle mémorisée.
+
+Dans cette version, les valeurs sont `MISSION.md`, `1.0.0`, `8`, `0` et `true`. Les identifiants et la policy restent dans leur forme technique ; les documents participant et les évaluations préparées sont en français.
 
 **Action — CLAUDE.**
 
 > Utilise la skill spec-readiness pour évaluer MISSION.md avec la rubric réellement attachée. Lis aussi les sorts existants. Enregistre ton évaluation puis exécute golden-thread verify. Présente en français facts, assumptions, unknowns, blockers, decisions et « Qu’est-ce que je ne sais pas que je ne sais pas ? ». N’approuve rien et arrête-toi avant toute implémentation.
 
-**Résultat attendu.** Une évaluation attribuée à son producteur et des questions à résoudre. Le score live peut différer des exemples préparés : c’est une opinion argumentée, pas une mesure objective. Même 10/10 ne suffit pas à approuver.
+**Ce que je dois observer.** Une évaluation attribuée à son producteur et des questions à résoudre. Le score live peut différer des exemples préparés : c’est une opinion argumentée, pas une mesure objective. Même 10/10 ne suffit pas à approuver.
 
 ### Matérialiser les réponses
 
@@ -157,7 +163,7 @@ Pour le parcours commun, le propriétaire de mission retient Water et un sort au
 >
 > Matérialise ces décisions dans MISSION.md, en français, avec des critères observables. Présente le diff, signale toute ambiguïté restante, puis réévalue le document enregistré avec spec-readiness. N’implémente rien et n’approuve rien.
 
-**Résultat attendu.** Les décisions sont dans le fichier, puis une nouvelle évaluation porte sur ce texte. Si des blockers subsistent, résolvez-les avant de poursuivre.
+**Ce que je dois observer.** Les décisions sont dans le fichier, puis une nouvelle évaluation porte sur ce texte. Si des blockers subsistent, résolvez-les avant de poursuivre.
 
 | Nature de la décision | Artefact qui fait autorité |
 |---|---|
@@ -182,7 +188,7 @@ golden-thread verify
 
 Lisez puis saisissez vous-même la phrase de confirmation affichée. **Ne demandez jamais à Claude d’exécuter cette approbation.**
 
-**Résultat attendu.** `DOR-001 PASS` et, si l’architecture reste conforme, `ON PATH`. Une approbation ne compense ni un score insuffisant ni un blocker.
+**Ce que je dois observer.** `DOR-001 PASS` et, si l’architecture reste conforme, `ON PATH`. Une approbation ne compense ni un score insuffisant ni un blocker.
 
 **Action — LAB.**
 
@@ -194,7 +200,7 @@ claude --continue
 
 > Exécute golden-thread verify et vérifie que DOR-001 est PASS. Si le résultat est NOT READY, propose de résoudre la readiness ou de demander explicitement un départ hors-piste, puis attends mon choix. Sinon, implémente Frost Ward selon MISSION.md, avec ses tests, en respectant ARCH-001. Exécute les tests et golden-thread verify. Présente les fichiers modifiés et les résultats réels. Ne change pas la mission approuvée pour l’adapter à ton code.
 
-**Résultat attendu.** Un module `frost_ward`, des tests associés et une architecture conforme. Si la mission doit évoluer, revenez à l’évaluation puis à l’approbation : le digest de la mission a changé.
+**Ce que je dois observer.** Un module `frost_ward`, des tests associés et une architecture conforme. Si la mission doit évoluer, revenez à l’évaluation puis à l’approbation : le digest de la mission a changé.
 
 **Pour raccrocher.** Demandez au familier : « Lis MISSION.md et l’état Golden Thread ; indique ce qui manque pour terminer cette seule mission. » Il n’existe pas de snapshot d’implémentation de rattrapage annoncé par ce guide. Si le développement prend trop de temps, poursuivez en binôme.
 
@@ -210,7 +216,7 @@ claude --continue
 >
 > Exécute d’abord golden-thread status et explique quelles preuves subsistent et quelles exigences n’ont pas encore de preuve. Puis exécute golden-thread verify et présente ce qui manque pour terminer.
 
-**Résultat attendu.** Six exigences. Les preuves DOR et ARCH peuvent subsister si leur sujet et leur contrat n’ont pas changé. Les quatre nouvelles exigences n’ont initialement aucune preuve ; verify les évalue. DOC et COOKIE doivent normalement échouer à ce premier contrôle.
+**Ce que je dois observer.** Six exigences. Les preuves DOR et ARCH peuvent subsister si leur sujet et leur contrat n’ont pas changé. Les quatre nouvelles exigences n’ont initialement aucune preuve ; verify les évalue. DOC et COOKIE doivent normalement échouer à ce premier contrôle.
 
 > Une nouvelle version de policy ajoute des exigences. Les preuves existantes survivent lorsque leur sujet et leur contrat restent inchangés.
 
@@ -243,7 +249,7 @@ golden-thread verify
 
 Sinon, conservez le manque visible et lancez seulement `golden-thread verify`. Un état `OFF PATH` expliqué est un résultat pédagogique valide ; ne fabriquez pas une attestation pour rendre l’écran vert.
 
-**Résultat attendu.** `ON PATH` si les six exigences sont satisfaites. Sinon, le rapport nomme précisément ce qui reste ouvert.
+**Ce que je dois observer.** `ON PATH` si les six exigences sont satisfaites. Sinon, le rapport nomme précisément ce qui reste ouvert.
 
 **Pour raccrocher.** Un changement de code peut invalider le stamp DOC et l’attestation COOKIE. Terminez le code avant ces actes. Relancez verify pour distinguer une preuve périmée d’un contrôle qui échoue réellement.
 
@@ -281,7 +287,7 @@ Si Git indique qu’il n’y a rien à commiter, poursuivez. Les attestations so
 
 N’exécutez pas cette commande depuis le LAB : celui-ci ne dispose pas du socket Docker du poste.
 
-**Résultat attendu.** Le journal affiche la policy épinglée, son SHA, le profil et les verdicts des six exigences. Il doit refléter les exigences encore ouvertes, cookies compris. La policy du projet fait échouer le job quand le verdict l’exige.
+**Ce que je dois observer.** Le journal affiche la policy épinglée, son SHA, le profil et les verdicts des six exigences. Il doit refléter les exigences encore ouvertes, cookies compris. La policy du projet fait échouer le job quand le verdict l’exige.
 
 Le replay local lit les instructions de `.gitlab-ci.yml`, mais copie le workspace courant : il ne constitue pas une exécution sur un runner GitLab et ne teste pas tout le service GitLab. Le vrai runner part d’un commit. Il conserve le rapport JSON comme artefact, y compris en échec ; le conteneur local jetable ne publie pas cet artefact.
 
@@ -324,7 +330,7 @@ golden-thread verify
 ```
 
 Si une sauvegarde existe déjà, ne l’écrasez pas ; choisissez un autre nom avant de poursuivre.
-Relisez la mission importée, qui est en anglais. Si vous la modifiez ou la traduisez ensuite, demandez une nouvelle évaluation. Le score préparé est 9/10 ; il ne remplace pas votre décision. Reprenez l’étape 3 pour l’approbation humaine.
+Relisez la mission importée, en français. Si vous la modifiez ensuite, demandez une nouvelle évaluation. Le score préparé est 9/10 ; il ne remplace pas votre décision. Reprenez l’étape 3 pour l’approbation humaine.
 
 ### Petits incidents
 
@@ -333,7 +339,7 @@ Relisez la mission importée, qui est en anglais. Si vous la modifiez ou la trad
 | Claude répond en anglais | rappeler « Réponds en français » ; ne traduire la mission qu’avant sa réévaluation |
 | Mauvais répertoire | dans le LAB : `cd /workspace/demo-spellbook` |
 | Commande golden-thread introuvable | vérifier que vous êtes dans le LAB, pas sur le poste |
-| Contraste insuffisant | changer le thème du terminal ; lire les libellés PASS/FAIL, sans dépendre des couleurs |
+| Contraste insuffisant | utiliser un thème contrasté du terminal ; dans Claude, ouvrir `/theme` et choisir le thème adapté ; lire aussi PASS/FAIL |
 | Fermeture du conteneur | relancer la commande Docker avec les mêmes volumes |
 | Nouvelle image, ancien travail toujours présent | le volume conserve l’ancien workspace ; ne pas le supprimer pendant l’atelier |
 | Besoin de tout recommencer | suivre LAB.md seulement après sauvegarde : supprimer le volume détruit la progression |
