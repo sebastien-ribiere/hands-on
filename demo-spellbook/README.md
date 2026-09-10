@@ -1,35 +1,55 @@
-# demo-spellbook
+# Bienvenue à l’Académie d’Aurélis
 
-Un projet consommateur rattaché à Golden Thread.
+**Votre mission : créer Frost Ward avec votre familier IA, puis apporter les
+preuves permettant d’accepter le travail.**
 
-    src/spells/
-      elements/   air, water, fire
-      protection/ shield, ward     <- soumis à ARCH-001
-      offense/    flame_lance      <- peut utiliser fire librement
-    tests/        ce que TEST-001 exécute
-    docs/         ce que DOC-001 stampe
-    MISSION.md    le sujet de DOR-001
+## Démarrer
 
-## Ce qui est commité, et ce qui ne l’est pas
+Le lab Docker vous place dans `/workspace/demo-spellbook`.
+Si vous n’y êtes pas encore, suivez [le lancement Docker](../LAB.md).
 
-    golden-thread.json                commité      indique à quelle policy le projet est rattaché
-    golden-thread-attestations.json   *voir ci-dessous*  ce qui nous a été déclaré, et par qui
-    .golden-thread/                   ignoré       cache de policy et preuves enregistrées
+Dans le lab :
 
-La séparation dépend de ce qui peut être reconstruit. `verify` reproduit les
-preuves et le manifest reproduit le cache ; `.golden-thread/` est donc jetable.
-Une attestation est la seule chose que rien ne peut régénérer — la parole de
-quelqu’un — et elle doit parvenir jusqu’au runner CI, qui signalerait autrement
-comme non accepté un travail pourtant accepté.
+```bash
+claude
+```
 
-**`golden-thread-attestations.json` est commité dans un vrai projet.** Il est
-ignoré ici, et uniquement ici, parce qu’il s’agit d’une démonstration : son
-contenu est produit par `demo/run-dod-demo.sh` à partir d’une mission que la démo
-réécrit elle-même ; un snapshot commité deviendrait donc stale dès l’exécution
-de la démo.
+Puis copiez ce premier prompt :
 
-Le manifest contient une source *relative à ce répertoire*. C’est ce qui le
-rend commitable : un chemin absolu est propre à une machine, et un manifest que
-personne ne peut commiter ne pinne rien pour les autres.
+> Réponds en français. Lis MISSION.md et fais une visite courte de src/spells/,
+> tests/ et docs/ARCHITECTURE.md. Ne modifie rien et n’implémente pas encore.
 
-La configuration corporate n’est jamais copiée dans ce projet.
+## Suivre le parcours
+
+Ouvrez le [guide participant](../GUIDE-PARTICIPANT.md), puis avancez avec
+l’animateur : **voir le chemin → préparer la mission → décider et déléguer →
+prouver la livraison → rejouer sans Claude**.
+
+Chaque étape indique : **Pourquoi → Action → Ce que je dois observer**.
+Les prompts se copient dans Claude ; les approbations se font par vous-même.
+
+## Retrouver sa place
+
+Dans le shell du lab :
+
+```bash
+golden-thread status
+```
+
+Pas encore de manifest ? Reprenez l’étape 1 du guide.
+`NOT READY` ? Revenez aux décisions et à la DoR.
+`OFF PATH` ou `STALE` ? Lisez l’exigence et sa raison avant de continuer.
+
+## Les quatre repères
+
+| Emplacement | À quoi il sert |
+|---|---|
+| `MISSION.md` | le contrat à clarifier puis accepter |
+| `src/` et `tests/` | le sort et ses tests |
+| `golden-thread.json` | la policy et le profil attachés |
+| `golden-thread-attestations.json` | évaluations et décisions à conserver avec Git |
+
+Les preuves calculées et le cache vivent dans `.golden-thread/` et sont
+reconstructibles. Les attestations doivent voyager avec le projet jusqu’à la CI.
+
+**L’agent prépare la décision ; l’humain prend la décision.**

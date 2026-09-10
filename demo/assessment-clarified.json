@@ -1,49 +1,49 @@
 {
-  "assessor": "spec-readiness skill (canned for a reproducible demo)",
+  "assessor": "Évaluation préparée pour la démo reproductible (non produite en session live)",
   "rubric": "spec-readiness@1.0.0",
   "score": 9,
   "dimensions": [
     {
       "id": "problem",
       "score": 2,
-      "note": "Unchanged, and still the strongest part: a real failure mode with named consequences."
+      "note": "Le scénario décrit un problème concret et ses conséquences pour les apprentis."
     },
     {
       "id": "outcome",
       "score": 2,
-      "note": "Three acceptance criteria, each checkable from outside, including one that names golden-thread verify."
+      "note": "Trois critères observables, dont un appel explicite à golden-thread verify."
     },
     {
       "id": "scope",
       "score": 2,
-      "note": "Both halves now drawn. Retiring the shield misuse is explicitly deferred to another mission, which is what the earlier 'where that makes sense' was hiding."
+      "note": "Le périmètre et les exclusions sont explicites ; les usages inadaptés de shield relèvent d’une autre mission."
     },
     {
       "id": "constraints",
       "score": 2,
-      "note": "ARCH-001 is named, and the mission states why Water satisfies it. That is the constraint that would have caused rework."
+      "note": "ARCH-001 est nommée et la mission explique pourquoi Water est conforme."
     },
     {
       "id": "unknowns",
       "score": 1,
-      "note": "The remaining unknown is named and genuinely minor. Held at 1 rather than 2 because the decision record states the answers without stating who made them or when."
+      "note": "L’inconnue restante est limitée. Un point sur deux : les décisions ne précisent pas le nom de leur auteur ni leur date."
     }
   ],
   "facts": [
-    "Both decisions raised in the previous assessment now have written answers.",
-    "Water is an allowed dependency for the protection layer under ARCH-001.",
-    "Out-of-scope items are enumerated rather than implied.",
-    "The acceptance criteria include the project's own verification command."
+    "Les deux décisions de l’évaluation précédente ont une réponse écrite.",
+    "Water est une dépendance autorisée pour les protections selon ARCH-001.",
+    "Les exclusions sont énumérées.",
+    "Les critères d’acceptation incluent la commande de vérification du projet."
   ],
   "assumptions": [
-    "The mission owner who answered the two decisions had the authority to answer them.",
-    "The Academy's element taxonomy still places chill effects with Water."
+    "Le propriétaire de mission avait autorité pour prendre ces décisions.",
+    "La taxonomie de l’Académie permet de rattacher le froid à Water."
   ],
   "unknowns": [
-    "The exact wording of the string frost_ward.cast() returns."
+    "La formulation exacte du texte renvoyé par frost_ward.cast(target)."
   ],
   "unknownUnknowns": [
-    "Whether a future combined ward will make this module's standalone design awkward to extend."
+    "Une future protection combinée pourrait-elle rendre ce choix d’autonomie difficile à faire évoluer ?"
   ],
   "blockers": [],
   "decisions": []
