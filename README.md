@@ -1,6 +1,7 @@
 # Golden Thread
 
-**Participer au hands-on :** [guide pratique de l’apprenti](GUIDE-PARTICIPANT.md).
+**Participer au hands-on :** [README participant](demo-spellbook/README.md),
+puis [guide pratique de l’apprenti](GUIDE-PARTICIPANT.md).
 Pour préparer l’environnement Docker : [démarrer le lab](LAB.md).
 
 Un golden path qu’une organisation peut distribuer, versionner et vérifier.

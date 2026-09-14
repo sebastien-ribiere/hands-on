@@ -40,6 +40,9 @@ RUN python3 -m pip install --no-cache-dir \
       pytest==8.3.4 \
       PyYAML==6.0.2
 
+# Réglages du shell installés hors du volume workspace persistant.
+COPY --chown=apprentice:apprentice demo/lab.bashrc /home/apprentice/.bashrc
+
 USER apprentice
 
 # The corporate source normally already exists on a forge. For the standalone
