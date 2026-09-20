@@ -14,17 +14,41 @@ Fire reste autorisé dans les sorts offensifs : le contrôle porte sur les dépe
 
 ## Le parcours, avant de commencer
 
-Les durées sont des repères pour une séance de 60 minutes, avec le téléchargement et la connexion réalisés avant la séance.
+Nous visons **50 minutes de parcours, introduction et débrief compris**, avec **10 minutes de réserve** pour les questions, les latences et les incidents. C’est un conducteur à valider en répétition, pas une durée mesurée.
 
-| Repère | Durée | Vous allez… | Ce que vous démontrez |
+Avant la séance : télécharger l’image du lab et `python:3.12-slim`, vérifier Docker et ouvrir une première session Claude pour terminer l’authentification. Le replay aura encore besoin du réseau pour installer ses outils.
+
+| Repère | Durée | Horloge cible | Point de synchronisation |
 |---|---:|---|---|
-| 0 · Entrer à l’Académie | 5 min | ouvrir le lab et visiter les fichiers | où vivent le travail, les règles et les preuves |
-| 1 · Voir le chemin | 7 min | attacher une policy et vérifier | une règle nommée produit une preuve |
-| 2 · Préparer la mission | 12 min | évaluer et clarifier Frost Ward | une conversation doit devenir un contrat |
-| 3 · Décider et déléguer | 10 min | approuver puis faire implémenter | l’évaluation et l’autorisation sont distinctes |
-| 4 · Prouver la livraison | 12 min | adopter la DoD et réunir les preuves | tests, sécurité, documentation et attestations ont des portées différentes |
-| 5 · Rejouer sans familier | 8 min | exécuter le job dans un autre conteneur | le contrôle fonctionne sans Claude |
-| Débrief | 6 min | relire le résultat et ses limites | ce que vous pourriez emporter dans votre IDP |
+| Introduction, Aurélis et parcours | 5 min | 00:00–05:00 | mission et règle de l’Académie comprises |
+| 0 · Ouvrir le lab et visiter les fichiers | 3 min | 05:00–08:00 | Claude ouvert dans le projet |
+| 1 · Voir le chemin et provoquer un écart | 5 min | 08:00–13:00 | preuve ARCH lue, fichier temporaire retiré |
+| 2 · Évaluer, répondre, écrire et réévaluer | 10 min | 13:00–23:00 | mission clarifiée et évaluation disponible |
+| 3 · Approuver, déléguer et réceptionner | 9 min | 23:00–32:00 | comportement examiné, décision humaine prise |
+| 4 · Vérifier la DoD, Bandit, doc et cookies | 9 min | 32:00–41:00 | sonde retirée, exigences restantes identifiées |
+| 5 · Rejouer sans familier | 6 min | 41:00–47:00 | résultat du job lu, ou échec d’exécution explicite |
+| Débrief et conclusion | 3 min | 47:00–50:00 | une exigence transposée à votre organisation |
+| Réserve partagée | 10 min | jusqu’à 60:00 | questions, latences et incidents |
+
+### Le contrat est connu avant de coder
+
+Le profil final `academy-spells-done` rassemble dès maintenant les exigences que nous allons explorer : `DOR-001`, `TEST-001`, `ARCH-001`, `SEC-001`, `DOC-001` et `COOKIE-001`.
+
+Dans un vrai projet, l’équipe connaît les conditions de démarrage et de livraison avant de commencer. Ici, les passages v0.1 → v0.2 → v0.3 servent à observer les mécanismes progressivement. Les règles du lab existent déjà ; nous activons successivement des profils plus complets. Au début, ON PATH ne vaut donc que pour le profil attaché.
+
+### Garder le groupe ensemble
+
+L’animateur annonce le point de synchronisation au début de chaque étape. Une personne bloquée peut suivre un binôme ou l’écran commun, puis reprendre avec le guide. Une étape observée sur l’écran de l’animateur reste distincte d’une étape réalisée sur son propre poste.
+
+À 08:00, si Docker ou l’authentification bloque encore, rejoindre un binôme ; éviter une installation improvisée pendant le parcours. À l’étape 1, faire une seule expérience Fire avec `path_probe.py` : lire le résultat, puis retirer la sonde.
+
+Pour la readiness, viser 2 minutes d’évaluation, 1 minute de réponses dans le chat et 7 minutes pour écrire les choix et réévaluer. Vers 20:00, proposer le [point de reprise DoR](#reprise-dor) si nécessaire : il est préparé et doit être présenté comme tel. Il conserve l’approbation humaine à l’étape suivante.
+
+Dans les 9 minutes de l’étape 3, réserver environ 2 minutes à l’approbation, 5 à l’implémentation et 2 à la réception. Si le travail reste incomplet à 32:00, utiliser la réserve ou suivre un binôme ; garder la mission non terminée visible. Aucun snapshot d’implémentation n’est promis.
+
+Les 9 minutes de DoD comprennent environ 2 minutes pour le profil et son premier rapport, 2 pour Bandit et 5 pour les corrections, la revue documentaire et les attestations réellement justifiées. Si cela déborde, utiliser la réserve ou observer la suite avec un binôme. Ne pas accélérer en fabriquant une approbation ou une attestation.
+
+La réserve est commune à toute la séance : noter le temps consommé à chaque incident. Garder les trois dernières minutes pour le débrief, au plus tard à 57:00. Les échanges supplémentaires utilisent la réserve restante ; les contrôles non exécutés restent signalés comme tels.
 
 **Un résultat rouge attendu est une observation réussie.** Cherchez l’exigence et la raison, pas seulement la couleur.
 
@@ -248,7 +272,7 @@ claude --continue
 
 ## 4 · Prouver la livraison avec la DoD
 
-**Pourquoi.** Un sort fonctionnel doit aussi satisfaire le contrat de livraison de l’Académie.
+**Pourquoi.** Vérifier le contrat de livraison annoncé au début de l’atelier. Nous activons maintenant son profil complet.
 
 **Action — CLAUDE.**
 
