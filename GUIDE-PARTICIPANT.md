@@ -119,9 +119,25 @@ Cette manipulation porte sur un fichier temporaire et se fait avant l’adoption
 
 **Action — CLAUDE.**
 
-> Nous faisons une expérience hors-piste explicite. Vérifie que src/spells/protection/path_probe.py n’existe pas ; s’il existe, arrête-toi. Crée ce fichier temporaire avec uniquement `from ..elements import fire`. Exécute golden-thread status puis golden-thread verify. Montre la dépendance interdite rapportée. Supprime uniquement le fichier temporaire que tu viens de créer, puis exécute à nouveau golden-thread verify.
+> J’autorise cette expérience hors-piste temporaire : créer une dépendance interdite, l’observer, puis la retirer à mon signal. Vérifie que src/spells/protection/path_probe.py n’existe pas ; s’il existe, arrête-toi. Crée ce fichier temporaire avec uniquement `from ..elements import fire`. Exécute golden-thread status puis golden-thread verify. Montre la dépendance interdite rapportée et attends mon signal avant de retirer le fichier. Ne modifie ni la règle ni son seuil.
 
-**Ce que je dois observer.** `STALE` après modification, puis `ARCH-001 FAIL / OFF PATH` après contrôle, puis `PASS / ON PATH` après retrait et nouvelle vérification. Le hook informe ; il n’empêche pas cette expérience.
+**Ce que je dois observer.** `STALE` après modification, puis `ARCH-001 FAIL / OFF PATH` après contrôle. Le hook informe ; il n’empêche pas cette expérience. **L’autorisation humaine ne transforme pas le verdict en PASS.**
+
+| Décision humaine | Constat Golden Thread |
+|---|---|
+| J’autorise cette expérience temporaire. | La dépendance Fire viole ARCH-001. |
+| Je décide de poursuivre momentanément. | Le projet reste OFF PATH. |
+| Je demande le retrait du fichier. | Après retrait et vérification, le projet revient ON PATH. |
+
+**Question à la salle : si nous devions conserver cette dépendance pendant deux semaines, qui pourrait l’autoriser et où garderions-nous cette décision ?**
+
+**Limite du prototype.** Golden Thread détecte l’écart, mais ne gère pas encore un registre de dérogations avec responsable, justification, périmètre et échéance. Un ticket ou un processus existant peut conserver cette décision. Le CLI ne la consomme pas automatiquement : l’écart reste visible tant qu’il subsiste.
+
+**Action — CLAUDE, au signal humain.**
+
+> Supprime uniquement path_probe.py que tu viens de créer, puis exécute golden-thread verify. Confirme que le fichier a disparu.
+
+**Ce que je dois observer.** `PASS / ON PATH` après retrait et nouvelle vérification. Le retour sur le chemin vient de la conformité retrouvée.
 
 **Pour raccrocher.** Demandez à Claude de vérifier que le fichier temporaire a bien été retiré et de relancer `golden-thread verify`. N’effacez pas le cache pour masquer un résultat.
 
@@ -153,6 +169,16 @@ Dans cette version, les valeurs sont `MISSION.md`, `1.0.0`, `8`, `0` et `true`. 
 
 **Ce que je dois observer.** Une évaluation attribuée à son producteur et des questions à résoudre. Le score live peut différer des exemples préparés : c’est une opinion argumentée, pas une mesure objective. Même 10/10 ne suffit pas à approuver.
 
+### Observer : une réponse dans le chat
+
+Après l’évaluation initiale, faisons une pause avant de modifier le contrat.
+
+**Action — CLAUDE.**
+
+> Voici mes réponses : Frost Ward utilise Water et reste autonome. Ne modifie encore aucun fichier et n’enregistre pas de nouvelle évaluation. Exécute golden-thread verify et explique ce que mes réponses ont changé dans l’état enregistré. N’implémente rien et n’approuve rien.
+
+**Ce que je dois observer.** La conversation a avancé, mais MISSION.md et l’évaluation enregistrée sont inchangés. Le contrôle utilise toujours cette évaluation et aucune approbation humaine n’a été enregistrée. Lisez les raisons réellement affichées : une décision ouverte n’est pas, à elle seule, une condition bloquante indépendante dans cette V0.
+
 ### Matérialiser les réponses
 
 Pour le parcours commun, le propriétaire de mission retient Water et un sort autonome, sans combinaison avec les protections existantes. Relisez ces choix avant de les transmettre.
@@ -164,6 +190,8 @@ Pour le parcours commun, le propriétaire de mission retient Water et un sort au
 > Matérialise ces décisions dans MISSION.md, en français, avec des critères observables. Présente le diff, signale toute ambiguïté restante, puis réévalue le document enregistré avec spec-readiness. N’implémente rien et n’approuve rien.
 
 **Ce que je dois observer.** Les décisions sont dans le fichier, puis une nouvelle évaluation porte sur ce texte. Si des blockers subsistent, résolvez-les avant de poursuivre.
+
+**Question à la salle : sur quel texte portera votre approbation ?**
 
 | Nature de la décision | Artefact qui fait autorité |
 |---|---|
@@ -202,6 +230,20 @@ claude --continue
 
 **Ce que je dois observer.** Un module `frost_ward`, des tests associés et une architecture conforme. Si la mission doit évoluer, revenez à l’évaluation puis à l’approbation : le digest de la mission a changé.
 
+### Accepter le sort livré
+
+**Pourquoi.** Vérifier que le comportement livré répond à la mission approuvée.
+
+**Action — CLAUDE.**
+
+> Reprends les critères observables de MISSION.md. Pour chacun, montre le comportement obtenu et le test associé. Exécute un exemple de cast(target) et les tests. Présente le diff et signale ce qui n’est pas démontré. Ne modifie pas la mission pour l’adapter au code. Attends ma décision.
+
+**Action — VOUS.** Examinez le comportement, le diff et les tests. Décidez « accepté » ou « correction demandée », avec les critères concernés. En cas de correction, faites corriger puis rejouer cette réception. Si le contrat doit changer, revenez à l’évaluation et à l’approbation avant de poursuivre.
+
+**Ce que je dois observer.** Chaque critère est relié à un résultat vérifiable, les limites sont visibles et vous prenez la décision d’accepter. Cette revue pédagogique n’ajoute pas une attestation ni une exigence au moteur Golden Thread. Le profil DoD reste à vérifier à l’étape suivante.
+
+**Question à la salle : les tests vérifient-ils la mission, ou seulement ce que Claude a choisi de coder ?**
+
 **Pour raccrocher.** Demandez au familier : « Lis MISSION.md et l’état Golden Thread ; indique ce qui manque pour terminer cette seule mission. » Il n’existe pas de snapshot d’implémentation de rattrapage annoncé par ce guide. Si le développement prend trop de temps, poursuivez en binôme.
 
 ## 4 · Prouver la livraison avec la DoD
@@ -233,6 +275,30 @@ claude --continue
 
 > Traite les éventuels échecs TEST, ARCH et SEC en t’appuyant sur leurs résultats réels. Mets ensuite docs/ARCHITECTURE.md en cohérence avec Frost Ward et montre-moi le diff. Ne modifie ni les seuils ni les règles pour obtenir PASS. N’exécute ni docs stamp ni attest ; laisse-moi ces étapes.
 
+### Observer un vrai finding de sécurité — environ 2 minutes
+
+**Pourquoi.** Distinguer le défaut signalé par Bandit du seuil bloquant choisi par l’Académie. Bandit analyse le code Python sans exécuter la fonction suspecte. Golden Thread utilise son rapport pour évaluer SEC-001.
+
+Cette expérience fait partie du parcours commun et précède le stamp documentaire et les attestations.
+
+**Action — CLAUDE.**
+
+> Pour cette expérience hors-piste explicite, lis .golden-thread/source/rules/SEC-001.toml et montre fail_on_severity et min_confidence. Vérifie que src/spells/protection/security_probe.py n’existe pas ; s’il existe, arrête-toi sans le modifier. Crée uniquement ce fichier temporaire avec une fonction improvise(value) qui retourne eval(value), sans jamais appeler cette fonction. Exécute golden-thread verify. Montre le finding Bandit, sa localisation, son identifiant, sa sévérité, sa confiance et son caractère bloquant. Explique quelles informations viennent du scanner et quelle décision vient de la policy. Arrête-toi pour me laisser lire le résultat ; ne corrige pas encore et ne modifie aucun seuil.
+
+**Ce que je dois observer.** Le finding attendu est B307, avec une sévérité MEDIUM ; SEC-001 échoue selon les seuils de la policy attachée. Le rapport donne le fichier et la ligne concernés. Les autres exigences, notamment DOC et COOKIE, peuvent aussi rester en échec : observez SEC-001 séparément du statut global.
+
+**Question à la salle : qu’est-ce qui vient de Bandit, et qu’est-ce qui relève du choix de l’Académie ?**
+
+**Action — CLAUDE, après observation.**
+
+> Supprime uniquement security_probe.py que tu viens de créer, puis relance golden-thread verify. Compare SEC-001 avant et après. Ne touche pas aux autres fichiers, à la policy ni aux attestations.
+
+**Ce que je dois observer.** Le finding introduit disparaît ; SEC-001 repasse si aucun autre finding bloquant ne subsiste. Cela ne garantit pas l’absence de vulnérabilité. Le statut global peut rester OFF PATH tant que DOC ou COOKIE manque.
+
+**Pour raccrocher.** Si l’expérience est interrompue, demandez à Claude de confirmer l’origine du fichier avant de le retirer. Ne supprimez pas un fichier préexistant. Un échec du scanner n’est pas une preuve de sécurité.
+
+### Relire et attester
+
 **Action — LAB, vous-même.** Après lecture et éventuelle correction de la documentation :
 
 ```bash
@@ -252,15 +318,6 @@ Sinon, conservez le manque visible et lancez seulement `golden-thread verify`. U
 **Ce que je dois observer.** `ON PATH` si les six exigences sont satisfaites. Sinon, le rapport nomme précisément ce qui reste ouvert.
 
 **Pour raccrocher.** Un changement de code peut invalider le stamp DOC et l’attestation COOKIE. Terminez le code avant ces actes. Relancez verify pour distinguer une preuve périmée d’un contrôle qui échoue réellement.
-
-### Expérience sécurité — facultative, sur signal de l’animateur
-
-**Action — CLAUDE.**
-
-> Pour cette expérience hors-piste explicite, vérifie que src/spells/protection/security_probe.py n’existe pas. S’il existe, arrête-toi. Crée ce fichier temporaire avec une fonction improvise(value) qui retourne eval(value), sans jamais appeler cette fonction. Exécute golden-thread verify et montre le finding Bandit, son identifiant, sa sévérité et son caractère bloquant. Supprime uniquement ce fichier temporaire, puis relance verify.
-
-Attendez-vous à un finding `B307` et à `SEC-001 FAIL` pendant l’expérience.
-DOC et COOKIE peuvent aussi ne plus s’appliquer au code modifié. Après retour exact au code initial, leurs affirmations peuvent redevenir applicables ; lisez le rapport avant toute nouvelle attestation.
 
 ## 5 · Rejouer sans familier
 
