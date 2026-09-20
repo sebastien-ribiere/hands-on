@@ -153,6 +153,16 @@ Dans cette version, les valeurs sont `MISSION.md`, `1.0.0`, `8`, `0` et `true`. 
 
 **Ce que je dois observer.** Une évaluation attribuée à son producteur et des questions à résoudre. Le score live peut différer des exemples préparés : c’est une opinion argumentée, pas une mesure objective. Même 10/10 ne suffit pas à approuver.
 
+### Observer : une réponse dans le chat
+
+Après l’évaluation initiale, faisons une pause avant de modifier le contrat.
+
+**Action — CLAUDE.**
+
+> Voici mes réponses : Frost Ward utilise Water et reste autonome. Ne modifie encore aucun fichier et n’enregistre pas de nouvelle évaluation. Exécute golden-thread verify et explique ce que mes réponses ont changé dans l’état enregistré. N’implémente rien et n’approuve rien.
+
+**Ce que je dois observer.** La conversation a avancé, mais MISSION.md et l’évaluation enregistrée sont inchangés. Le contrôle utilise toujours cette évaluation et aucune approbation humaine n’a été enregistrée. Lisez les raisons réellement affichées : une décision ouverte n’est pas, à elle seule, une condition bloquante indépendante dans cette V0.
+
 ### Matérialiser les réponses
 
 Pour le parcours commun, le propriétaire de mission retient Water et un sort autonome, sans combinaison avec les protections existantes. Relisez ces choix avant de les transmettre.
@@ -164,6 +174,8 @@ Pour le parcours commun, le propriétaire de mission retient Water et un sort au
 > Matérialise ces décisions dans MISSION.md, en français, avec des critères observables. Présente le diff, signale toute ambiguïté restante, puis réévalue le document enregistré avec spec-readiness. N’implémente rien et n’approuve rien.
 
 **Ce que je dois observer.** Les décisions sont dans le fichier, puis une nouvelle évaluation porte sur ce texte. Si des blockers subsistent, résolvez-les avant de poursuivre.
+
+**Question à la salle : sur quel texte portera votre approbation ?**
 
 | Nature de la décision | Artefact qui fait autorité |
 |---|---|
@@ -201,6 +213,20 @@ claude --continue
 > Exécute golden-thread verify et vérifie que DOR-001 est PASS. Si le résultat est NOT READY, propose de résoudre la readiness ou de demander explicitement un départ hors-piste, puis attends mon choix. Sinon, implémente Frost Ward selon MISSION.md, avec ses tests, en respectant ARCH-001. Exécute les tests et golden-thread verify. Présente les fichiers modifiés et les résultats réels. Ne change pas la mission approuvée pour l’adapter à ton code.
 
 **Ce que je dois observer.** Un module `frost_ward`, des tests associés et une architecture conforme. Si la mission doit évoluer, revenez à l’évaluation puis à l’approbation : le digest de la mission a changé.
+
+### Accepter le sort livré
+
+**Pourquoi.** Vérifier que le comportement livré répond à la mission approuvée.
+
+**Action — CLAUDE.**
+
+> Reprends les critères observables de MISSION.md. Pour chacun, montre le comportement obtenu et le test associé. Exécute un exemple de cast(target) et les tests. Présente le diff et signale ce qui n’est pas démontré. Ne modifie pas la mission pour l’adapter au code. Attends ma décision.
+
+**Action — VOUS.** Examinez le comportement, le diff et les tests. Décidez « accepté » ou « correction demandée », avec les critères concernés. En cas de correction, faites corriger puis rejouer cette réception. Si le contrat doit changer, revenez à l’évaluation et à l’approbation avant de poursuivre.
+
+**Ce que je dois observer.** Chaque critère est relié à un résultat vérifiable, les limites sont visibles et vous prenez la décision d’accepter. Cette revue pédagogique n’ajoute pas une attestation ni une exigence au moteur Golden Thread. Le profil DoD reste à vérifier à l’étape suivante.
+
+**Question à la salle : les tests vérifient-ils la mission, ou seulement ce que Claude a choisi de coder ?**
 
 **Pour raccrocher.** Demandez au familier : « Lis MISSION.md et l’état Golden Thread ; indique ce qui manque pour terminer cette seule mission. » Il n’existe pas de snapshot d’implémentation de rattrapage annoncé par ce guide. Si le développement prend trop de temps, poursuivez en binôme.
 
