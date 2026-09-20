@@ -119,9 +119,25 @@ Cette manipulation porte sur un fichier temporaire et se fait avant l’adoption
 
 **Action — CLAUDE.**
 
-> Nous faisons une expérience hors-piste explicite. Vérifie que src/spells/protection/path_probe.py n’existe pas ; s’il existe, arrête-toi. Crée ce fichier temporaire avec uniquement `from ..elements import fire`. Exécute golden-thread status puis golden-thread verify. Montre la dépendance interdite rapportée. Supprime uniquement le fichier temporaire que tu viens de créer, puis exécute à nouveau golden-thread verify.
+> J’autorise cette expérience hors-piste temporaire : créer une dépendance interdite, l’observer, puis la retirer à mon signal. Vérifie que src/spells/protection/path_probe.py n’existe pas ; s’il existe, arrête-toi. Crée ce fichier temporaire avec uniquement `from ..elements import fire`. Exécute golden-thread status puis golden-thread verify. Montre la dépendance interdite rapportée et attends mon signal avant de retirer le fichier. Ne modifie ni la règle ni son seuil.
 
-**Ce que je dois observer.** `STALE` après modification, puis `ARCH-001 FAIL / OFF PATH` après contrôle, puis `PASS / ON PATH` après retrait et nouvelle vérification. Le hook informe ; il n’empêche pas cette expérience.
+**Ce que je dois observer.** `STALE` après modification, puis `ARCH-001 FAIL / OFF PATH` après contrôle. Le hook informe ; il n’empêche pas cette expérience. **L’autorisation humaine ne transforme pas le verdict en PASS.**
+
+| Décision humaine | Constat Golden Thread |
+|---|---|
+| J’autorise cette expérience temporaire. | La dépendance Fire viole ARCH-001. |
+| Je décide de poursuivre momentanément. | Le projet reste OFF PATH. |
+| Je demande le retrait du fichier. | Après retrait et vérification, le projet revient ON PATH. |
+
+**Question à la salle : si nous devions conserver cette dépendance pendant deux semaines, qui pourrait l’autoriser et où garderions-nous cette décision ?**
+
+**Limite du prototype.** Golden Thread détecte l’écart, mais ne gère pas encore un registre de dérogations avec responsable, justification, périmètre et échéance. Un ticket ou un processus existant peut conserver cette décision. Le CLI ne la consomme pas automatiquement : l’écart reste visible tant qu’il subsiste.
+
+**Action — CLAUDE, au signal humain.**
+
+> Supprime uniquement path_probe.py que tu viens de créer, puis exécute golden-thread verify. Confirme que le fichier a disparu.
+
+**Ce que je dois observer.** `PASS / ON PATH` après retrait et nouvelle vérification. Le retour sur le chemin vient de la conformité retrouvée.
 
 **Pour raccrocher.** Demandez à Claude de vérifier que le fichier temporaire a bien été retiré et de relancer `golden-thread verify`. N’effacez pas le cache pour masquer un résultat.
 
