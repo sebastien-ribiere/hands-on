@@ -259,6 +259,30 @@ claude --continue
 
 > Traite les éventuels échecs TEST, ARCH et SEC en t’appuyant sur leurs résultats réels. Mets ensuite docs/ARCHITECTURE.md en cohérence avec Frost Ward et montre-moi le diff. Ne modifie ni les seuils ni les règles pour obtenir PASS. N’exécute ni docs stamp ni attest ; laisse-moi ces étapes.
 
+### Observer un vrai finding de sécurité — environ 2 minutes
+
+**Pourquoi.** Distinguer le défaut signalé par Bandit du seuil bloquant choisi par l’Académie. Bandit analyse le code Python sans exécuter la fonction suspecte. Golden Thread utilise son rapport pour évaluer SEC-001.
+
+Cette expérience fait partie du parcours commun et précède le stamp documentaire et les attestations.
+
+**Action — CLAUDE.**
+
+> Pour cette expérience hors-piste explicite, lis .golden-thread/source/rules/SEC-001.toml et montre fail_on_severity et min_confidence. Vérifie que src/spells/protection/security_probe.py n’existe pas ; s’il existe, arrête-toi sans le modifier. Crée uniquement ce fichier temporaire avec une fonction improvise(value) qui retourne eval(value), sans jamais appeler cette fonction. Exécute golden-thread verify. Montre le finding Bandit, sa localisation, son identifiant, sa sévérité, sa confiance et son caractère bloquant. Explique quelles informations viennent du scanner et quelle décision vient de la policy. Arrête-toi pour me laisser lire le résultat ; ne corrige pas encore et ne modifie aucun seuil.
+
+**Ce que je dois observer.** Le finding attendu est B307, avec une sévérité MEDIUM ; SEC-001 échoue selon les seuils de la policy attachée. Le rapport donne le fichier et la ligne concernés. Les autres exigences, notamment DOC et COOKIE, peuvent aussi rester en échec : observez SEC-001 séparément du statut global.
+
+**Question à la salle : qu’est-ce qui vient de Bandit, et qu’est-ce qui relève du choix de l’Académie ?**
+
+**Action — CLAUDE, après observation.**
+
+> Supprime uniquement security_probe.py que tu viens de créer, puis relance golden-thread verify. Compare SEC-001 avant et après. Ne touche pas aux autres fichiers, à la policy ni aux attestations.
+
+**Ce que je dois observer.** Le finding introduit disparaît ; SEC-001 repasse si aucun autre finding bloquant ne subsiste. Cela ne garantit pas l’absence de vulnérabilité. Le statut global peut rester OFF PATH tant que DOC ou COOKIE manque.
+
+**Pour raccrocher.** Si l’expérience est interrompue, demandez à Claude de confirmer l’origine du fichier avant de le retirer. Ne supprimez pas un fichier préexistant. Un échec du scanner n’est pas une preuve de sécurité.
+
+### Relire et attester
+
 **Action — LAB, vous-même.** Après lecture et éventuelle correction de la documentation :
 
 ```bash
@@ -278,15 +302,6 @@ Sinon, conservez le manque visible et lancez seulement `golden-thread verify`. U
 **Ce que je dois observer.** `ON PATH` si les six exigences sont satisfaites. Sinon, le rapport nomme précisément ce qui reste ouvert.
 
 **Pour raccrocher.** Un changement de code peut invalider le stamp DOC et l’attestation COOKIE. Terminez le code avant ces actes. Relancez verify pour distinguer une preuve périmée d’un contrôle qui échoue réellement.
-
-### Expérience sécurité — facultative, sur signal de l’animateur
-
-**Action — CLAUDE.**
-
-> Pour cette expérience hors-piste explicite, vérifie que src/spells/protection/security_probe.py n’existe pas. S’il existe, arrête-toi. Crée ce fichier temporaire avec une fonction improvise(value) qui retourne eval(value), sans jamais appeler cette fonction. Exécute golden-thread verify et montre le finding Bandit, son identifiant, sa sévérité et son caractère bloquant. Supprime uniquement ce fichier temporaire, puis relance verify.
-
-Attendez-vous à un finding `B307` et à `SEC-001 FAIL` pendant l’expérience.
-DOC et COOKIE peuvent aussi ne plus s’appliquer au code modifié. Après retour exact au code initial, leurs affirmations peuvent redevenir applicables ; lisez le rapport avant toute nouvelle attestation.
 
 ## 5 · Rejouer sans familier
 
