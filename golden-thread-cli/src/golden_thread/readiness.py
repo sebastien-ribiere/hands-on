@@ -288,7 +288,9 @@ def confirm_phrase(wanted: str, supplied: str | None, refusal: str) -> None:
             "Doing so records it as yours. It does not make it anyone else's."
         )
 
-    print(f"Type the phrase to confirm: {wanted}")
+    from .ui import t
+
+    print(t("Type the phrase to confirm: {0}", wanted))
     try:
         typed = input("> ").strip()
     except EOFError:

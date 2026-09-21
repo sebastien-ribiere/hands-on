@@ -17,6 +17,11 @@ partent de `/workspace/demo-spellbook`, même si vous lisez ce README à la raci
 Dans Claude, `/exit` rend le shell ; `claude --continue` reprend la conversation.
 Copiez les blocs un à un et regardez le résultat avant de poursuivre.
 
+Le lab et le replay CI affichent les retours Golden Thread en français.
+Les identifiants (`PASS`, `FAIL`, `SEC-001`…), les rapports JSON et les
+diagnostics bruts des outils restent inchangés. Bandit B307 est accompagné
+d’une explication française.
+
 [0 · Démarrer](#lab-0) · [1 · Voir le chemin](#lab-1) ·
 [2 · Préparer](#lab-2) · [3 · Décider et déléguer](#lab-3) ·
 [4 · Prouver](#lab-4) · [5 · Rejouer](#lab-5) · [Reprendre](#lab-reprise)

@@ -45,6 +45,7 @@ jobs:
             set -e
             test "$PWD" = /workspace/demo-spellbook
             command -v golden-thread
+            test "$GOLDEN_THREAD_LANG" = fr
             golden-thread --help >/dev/null
             command -v claude
             claude --version
@@ -55,6 +56,10 @@ jobs:
             git -C ../.demo/golden-thread-source rev-parse --verify v0.3.0^{commit} >/dev/null
             test ! -f golden-thread.json
             git -C /workspace status --porcelain | test ! -s /dev/stdin
+            golden-thread init --source ../.demo/golden-thread-source --ref v0.1.0
+            golden-thread verify > /tmp/verify-fr.txt
+            grep -q "Les sorts de protection" /tmp/verify-fr.txt
+            grep -q "ON PATH" /tmp/verify-fr.txt
           '
 
   publish:

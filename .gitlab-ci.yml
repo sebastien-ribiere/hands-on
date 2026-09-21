@@ -41,6 +41,7 @@ default:
     - ./demo/publish-source.sh
 
 variables:
+  GOLDEN_THREAD_LANG: fr
   # The project held to the golden path. In a real repository this is the
   # repository itself and this variable does not exist.
   GT_PROJECT: demo-spellbook
@@ -57,7 +58,7 @@ golden-thread:
     # --- 1. compute the state ------------------------------------------
     # Never fails the job on a verdict. A non-zero exit here is a fact to be
     # recorded, not an outcome to be reacted to yet.
-    - echo "Golden Thread pinned for this project:"
+    - echo "Golden Thread fixé pour ce projet :"
     - cat "$GT_PROJECT/golden-thread.json"
     - |
       set +e
@@ -70,13 +71,16 @@ golden-thread:
     - |
       python3 - <<'PY'
       import json
+      import sys
+      sys.path.insert(0, "golden-thread-cli/src")
+      from golden_thread.ui import t
       report = json.load(open("golden-thread-report.json"))
       gt = report["goldenThread"]
-      print(f"Golden Thread state : {report['pathStatus']} (exit {report['exitCode']})")
+      print(f"État Golden Thread  : {report['pathStatus']} (code {report['exitCode']})")
       print(f"Policy              : {gt['ref']} @ {gt['revision'][:12]}")
-      print(f"Profile             : {gt['profile']}")
+      print(f"Profil              : {gt['profile']}")
       for r in report["requirements"]:
-          print(f"  {r['reportedStatus']:<7} {r['requirement']}  {r['title']}")
+          print(f"  {r['reportedStatus']:<7} {r['requirement']}  {t(r['title'])}")
       PY
 
     # --- 3. this project's policy ---------------------------------------
@@ -85,13 +89,13 @@ golden-thread:
     # fail the pipeline for a Golden Thread reason.
     - |
       if [ "$gt_exit" -eq 2 ]; then
-        echo "PIPELINE FAILED: golden-thread could not run at all."
-        echo "This is not a verdict about the code. Nothing was verified."
+        echo "ÉCHEC DE LA PIPELINE : golden-thread n’a pas pu s’exécuter."
+        echo "Aucun verdict n’a pu être établi sur le code."
       elif [ "$gt_exit" -ne 0 ]; then
-        echo "PIPELINE FAILED BY THIS PROJECT'S POLICY."
-        echo "Golden Thread computed a state and did not ask for this."
-        echo "The line in .gitlab-ci.yml that propagates its exit code did."
-        echo "A project pinning the same golden path may choose otherwise."
+        echo "ÉCHEC DE LA PIPELINE SELON LA POLICY DE CE PROJET."
+        echo "Golden Thread a calculé un état."
+        echo "Ce projet propage son code de sortie dans .gitlab-ci.yml."
+        echo "Un autre projet peut choisir un traitement différent du même état."
       fi
     - exit $gt_exit
 
