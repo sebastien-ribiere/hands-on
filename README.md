@@ -226,6 +226,11 @@ seuils de sévérité et de confiance MEDIUM, `SEC-001 FAIL`. Après lecture :
 Le finding introduit disparaît. D’autres échecs peuvent subsister ; un PASS
 du scanner ne garantit pas l’absence de vulnérabilité.
 
+**Avant de passer à la CI :** confirmez que
+`src/spells/protection/security_probe.py` a disparu et lisez le nouveau verdict
+de `SEC-001`. Si cette sonde reste présente, la CI retrouvera volontairement
+le même défaut B307. Le [dépannage du replay](#lab-ci-sec) explique comment reprendre.
+
 **VOUS.** Quittez Claude avec `/exit`. Après lecture de la documentation, dans le LAB :
 
 ```bash
@@ -291,6 +296,69 @@ Les exigences encore ouvertes peuvent faire échouer le job. Ce replay copie le
 workspace et exécute le job sans Claude ; un runner GitLab part d’un commit.
 Le conteneur local est jetable et ne publie pas son rapport comme artefact.
 Si un téléchargement échoue, cette étape reste non vérifiée sur votre poste.
+
+<a id="lab-ci-sec"></a>
+#### Si la CI affiche SEC-001 FAIL avec B307
+
+**Pourquoi :** si le rapport désigne
+`src/spells/protection/security_probe.py:2`, le fichier créé pour l’expérience
+Bandit est encore dans le workspace. Bandit détecte l’usage de `eval()` même
+si la fonction n’est jamais appelée. Ce constat est attendu tant que la sonde
+reste présente.
+
+Dans cet exemple, Bandit fournit le diagnostic B307 et la sévérité MEDIUM.
+La règle SEC-001 fixe les seuils de sévérité et de confiance à MEDIUM ; ce
+diagnostic rend donc l’exigence non satisfaite. Le job propage le code de sortie
+de la vérification, ce qui fait échouer la pipeline selon la configuration
+de ce projet.
+
+**Les sorties restent en partie en anglais.** Voici comment lire ce passage :
+
+| Dans le terminal | Ce que cela signifie |
+|---|---|
+| `No known security defect at MEDIUM or above` | Le contrôle recherche les défauts signalés à partir du seuil de sévérité MEDIUM. Un PASS ne garantit pas l’absence de vulnérabilité. |
+| `MEDIUM B307 (bandit)` | Bandit signale un usage potentiellement dangereux de `eval()`, de sévérité moyenne. |
+| `ran ... over 12 file(s)` | Le scanner a analysé 12 fichiers dans cet exemple ; votre nombre peut différer. |
+| `this profile fails on MEDIUM and above, at MEDIUM confidence and above` | Le profil échoue dès les seuils MEDIUM de sévérité et de confiance. |
+| `PIPELINE FAILED BY THIS PROJECT'S POLICY` | La pipeline échoue parce que ce projet propage le résultat de la vérification. |
+
+La suggestion de Bandit concernant `ast.literal_eval` fait partie de son
+diagnostic générique. Pour cette expérience, retirez la sonde temporaire :
+elle ne fait pas partie de Frost Ward. Si le rapport désigne un autre fichier
+ou un autre diagnostic, examinez ce résultat avant de choisir la correction.
+
+**Action — CLAUDE, dans le LAB d’origine.** Reprenez avec `claude --continue`
+si nécessaire, puis donnez ce prompt :
+
+> Le replay CI signale B307 dans src/spells/protection/security_probe.py.
+> Retire uniquement ce fichier créé pour notre expérience Bandit. Confirme son
+> absence, puis exécute golden-thread verify. Montre les verdicts et explique
+> les éventuels échecs en français. Ne change ni les règles ni les seuils.
+> N’exécute aucune approbation, docs stamp ou attestation à ma place.
+
+**Ce que je dois observer :** le finding B307 de cette sonde disparaît.
+SEC-001 passe si aucun autre diagnostic ne dépasse les seuils du profil.
+D’autres exigences peuvent encore échouer : lisez le rapport complet.
+
+Le retrait change le digest du code. Si DOC-001 indique que son stamp ne
+correspond plus au code courant, relisez `docs/ARCHITECTURE.md` et faites-la
+corriger si nécessaire. Après cette revue, quittez Claude avec `/exit` et
+exécutez vous-même dans le LAB :
+
+```bash
+golden-thread docs stamp
+golden-thread verify
+```
+
+Refaites le stamp uniquement s’il est nécessaire et après lecture.
+La mission inchangée ne demande pas une nouvelle approbation DoR du seul fait
+du retrait de cette sonde.
+
+Relisez et conservez ensuite la correction avec la séquence Git du début de
+l’[étape 5](#lab-5), puis relancez la même commande Docker de replay depuis votre
+POSTE. Corrigez le workspace d’origine : le conteneur de replay travaille sur
+une copie jetable. Le résultat final reflète toutes les exigences ; un manque
+restant, y compris COOKIE-001, doit rester visible.
 
 <a id="lab-reprise"></a>
 ### Reprendre sans recommencer
