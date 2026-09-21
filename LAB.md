@@ -133,3 +133,30 @@ la projection. Les verdicts Golden Thread sont des libellés explicites
 Après mise à jour de l’image, un volume existant conserve son ancien workspace.
 Pour essayer la nouvelle version sans perdre votre travail, lancez-la avec un
 nouveau nom de volume workspace ; vous pouvez garder le volume Claude.
+
+## Langue des retours Golden Thread
+
+L’image du lab et le job CI activent `GOLDEN_THREAD_LANG=fr`. Les messages du
+parcours, les intitulés des exigences connues, la grille affichée et le résumé
+CI sont présentés en français. Les statuts (`PASS`, `FAIL`, `NOT READY`…), les
+commandes et les phrases de confirmation restent identiques.
+
+Les preuves et les rapports `--json` conservent leurs données originales,
+y compris les textes de la policy. Les diagnostics bruts de Bandit et des tests
+restent ceux de leurs outils ; B307 est accompagné d’une explication française.
+Un texte de policy inconnu du catalogue de traduction est affiché tel quel.
+La langue ne modifie ni les règles, ni leurs digests, ni les verdicts.
+
+Hors du conteneur, avec cette version de la CLI :
+
+```bash
+GOLDEN_THREAD_LANG=fr golden-thread verify
+```
+
+`GOLDEN_THREAD_LANG=en` retrouve l’affichage anglais de la CLI.
+
+**Après une mise à jour de l’image :** un volume workspace déjà utilisé garde
+l’ancienne copie du dépôt, dont `.gitlab-ci.yml` et la CLI utilisée par le replay.
+Un simple `docker pull` ne met pas ce volume à jour. Conservez-le pour votre
+travail ; pour une nouvelle répétition, choisissez un nouveau nom de volume
+workspace et utilisez ce même nom dans le lancement et dans le replay.

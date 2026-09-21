@@ -59,7 +59,8 @@ RUN git -C /workspace init -q -b main \
     && git -C /workspace commit -q -m "Hands-on baseline"
 
 ENV HOME=/home/apprentice \
-    GOLDEN_THREAD_LAB=1
+    GOLDEN_THREAD_LAB=1 \
+    GOLDEN_THREAD_LANG=fr
 
 WORKDIR /workspace/demo-spellbook
 

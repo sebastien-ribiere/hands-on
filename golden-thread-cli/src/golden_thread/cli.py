@@ -33,6 +33,7 @@ from . import (
 from .attestation import APPROVED, ASSESSMENT, ATTESTED, REFUSED, REJECTED
 from .errors import GoldenThreadError
 from .paths import WORK_DIR_NAME
+from .ui import t, recorded_text, claim_summary, method_text, french
 from .results import ERROR, FAIL
 
 LABEL_WIDTH = 14
@@ -40,7 +41,7 @@ INDENT = " " * 7
 
 
 def _line(label: str, value: str) -> str:
-    return f"{label.ljust(LABEL_WIDTH)}{value}"
+    return f"{t(label).ljust(LABEL_WIDTH)}{value}"
 
 
 def _next_command(args: argparse.Namespace, action: str) -> str:
@@ -71,12 +72,12 @@ def _git_note(subject) -> str:
     """Context, never the mechanism: the digest is what decides."""
     if not subject.git_revision:
         return ""
-    dirty = ", dirty" if subject.git_dirty else ""
+    dirty = t(", dirty") if subject.git_dirty else ""
     return f"   git {subject.git_revision[:12]}{dirty}"
 
 
 def _describe(subject) -> str:
-    return f"{subject.file_count} file(s) sha256:{subject.short_digest}"
+    return t("{0} file(s) sha256:{1}", subject.file_count, subject.short_digest)
 
 
 def _print_provenance(entry) -> None:
@@ -87,87 +88,88 @@ def _print_provenance(entry) -> None:
 
     if entry.reported_status == status_mod.STALE:
         print(
-            f"{INDENT}subject   recorded {_describe(subject)}{_git_note(subject)}"
+            t('{0}subject   recorded {1}{2}', INDENT, _describe(subject), _git_note(subject))
         )
         if current is not None:
             print(
-                f"{INDENT}          current  {_describe(current)}{_git_note(current)}"
+                t('{0}          current  {1}{2}', INDENT, _describe(current), _git_note(current))
             )
     else:
         print(
-            f"{INDENT}subject   {subject.root}/ - {_describe(subject)}"
-            f"{_git_note(subject)}"
+            t('{0}subject   {1}/ - {2}{3}', INDENT, subject.root, _describe(subject), _git_note(subject))
         )
     # A requirement satisfied by claims made elsewhere never appears without
     # them: the assessment and the human decision are part of the provenance,
     # not a detail behind a --verbose flag.
     for claim in evidence.result.supporting:
-        print(f"{INDENT}rests on  {claim.kind}: {claim.summary()}")
-    print(f"{INDENT}method    {evidence.method}")
-    print(f"{INDENT}tool      {evidence.producer}")
-    print(f"{INDENT}recorded  {evidence.timestamp}")
+        print(t('{0}rests on  {1}: {2}', INDENT, t(claim.kind), claim_summary(claim)))
+    print(t('{0}method    {1}', INDENT, method_text(evidence.method)))
+    print(t('{0}tool      {1}', INDENT, evidence.producer))
+    print(t('{0}recorded  {1}', INDENT, evidence.timestamp))
 
 
 def _print_entry(entry) -> None:
     reported = entry.reported_status
-    print(f"{reported.ljust(6)} {entry.requirement}  {entry.title}")
+    print(f"{reported.ljust(6)} {entry.requirement}  {t(entry.title)}")
 
     if entry.evidence is None:
-        print(f"{INDENT}never verified")
+        print(t('{0}never verified', INDENT))
         print()
         return
 
     if reported == status_mod.STALE:
         print(
-            f"{INDENT}recorded {entry.evidence.result.status} no longer applies:"
+            t('{0}recorded {1} no longer applies:', INDENT, entry.evidence.result.status)
         )
         for reason in entry.freshness.reasons:
-            print(f"{INDENT}  - {reason}")
+            print(f"{INDENT}  - {recorded_text(reason)}")
     else:
         if reported == ERROR:
-            print(f"{INDENT}could not run: {entry.evidence.result.error}")
+            print(t('{0}could not run: {1}', INDENT, recorded_text(entry.evidence.result.error)))
         for violation in entry.evidence.result.violations:
             print(f"{INDENT}{violation.file}:{violation.line}")
             print(f"{INDENT}  {violation.source_module} -> {violation.target_module}")
-            print(f"{INDENT}  {violation.reason}")
+            print(f"{INDENT}  {recorded_text(violation.reason)}")
         # An analyser's findings, in the analyser's own terms. The severity and
         # the rule id are the tool's, not ours, and the reference is printed so
         # a reader can go and disagree with it.
         for finding in entry.evidence.result.findings:
-            below = "" if finding.blocking else "   [below this profile's threshold]"
+            below = "" if finding.blocking else t("   [below this profile's threshold]")
             print(f"{INDENT}{finding.file}:{finding.line}{below}")
             print(
                 f"{INDENT}  {finding.severity} {finding.rule} "
                 f"({finding.analyser}): {finding.message}"
             )
+            if french() and finding.analyser == "bandit" and finding.rule == "B307":
+                print(f"{INDENT}  Lecture : usage potentiellement dangereux de eval().")
             if finding.reference:
                 print(f"{INDENT}  {finding.reference}")
         # Printed for PASS as much as for FAIL: a verdict is never shown
         # without the reason it is that verdict.
         for note in entry.evidence.result.notes:
-            print(f"{INDENT}- {note}")
+            print(f"{INDENT}- {recorded_text(note)}")
 
     _print_provenance(entry)
     print()
 
 
 def _print_trailer(status) -> None:
-    print(f"PATH STATUS   {status.path_status}")
+    print(t('PATH STATUS   {0}', status.path_status))
 
     if status.path_status == status_mod.INCOMPLETE:
         print()
-        print("Nothing verified yet. Run: golden-thread verify")
+        print(t('Nothing verified yet. Run: golden-thread verify'))
     elif status.path_status == status_mod.STALE:
         print()
-        print("Evidence exists but no longer describes this project, so it is")
-        print("not shown as a verdict. Run: golden-thread verify")
+        print(t('Evidence exists but no longer describes this project, so it is'))
+        print(t('not shown as a verdict. Run: golden-thread verify'))
     elif status.path_status == status_mod.NOT_READY:
         print()
-        print("A readiness requirement is not satisfied: this work was not agreed")
-        print("before it started. Like every other Golden Thread signal, it is a")
-        print("signal -- nothing here stops you writing code. It states that the")
-        print("Definition of Ready has not been met, and by whose account.")
-        print("Next          golden-thread readiness rubric")
+        print(t('A readiness requirement is not satisfied: this work was not agreed'))
+        print(t('before it started. Like every other Golden Thread signal, it is a'))
+        print(t('signal -- nothing here stops you writing code. It states that the'))
+        print(t('Definition of Ready has not been met, and by whose account.'))
+        print(t('Next          golden-thread readiness rubric'))
     elif status.path_status == status_mod.OFF_PATH:
         failing = [
             e
@@ -186,14 +188,12 @@ def _print_trailer(status) -> None:
         )
         print()
         print(
-            f"{len(failing)} requirement(s) not satisfied, {located} located in "
-            "the code."
+            t('{0} requirement(s) not satisfied, {1} located in the code.', len(failing), located)
         )
         print(
-            "This is a signal, not a block: you may stay off path deliberately, "
-            "but the"
+            t('This is a signal, not a block: you may stay off path deliberately, but the')
         )
-        print("deviation is now explicit.")
+        print(t('deviation is now explicit.'))
 
 
 def _render(title: str, status) -> None:
@@ -242,15 +242,15 @@ def cmd_init(args: argparse.Namespace) -> int:
     )
     _ensure_gitignored(project)
 
-    print("Golden Thread attached")
+    print(t('Golden Thread attached'))
     print(_line("Source", args.source))
     print(_line("Policy ref", args.ref))
     print(_line("Policy SHA", revision))
     print(_line("Profile", profile.name))
     print(_line("Requirements", ", ".join(r.id for r in profile.rules) or "none"))
     print()
-    print(f"Manifest      {written.relative_to(project)}")
-    print(f"Next          {_next_command(args, 'verify')}")
+    print(t('Manifest      {0}', written.relative_to(project)))
+    print(t('Next          {0}', _next_command(args, 'verify')))
     return 0
 
 
@@ -314,28 +314,28 @@ def cmd_readiness_rubric(args: argparse.Namespace) -> int:
         )
         return 0
 
-    print(f"{target.rule.id}  {target.rule.title}")
-    print(_line("Rubric", f"{rubric.ref}  {rubric.title}"))
+    print(f"{target.rule.id}  {t(target.rule.title)}")
+    print(_line("Rubric", f"{rubric.ref}  {t(rubric.title)}"))
     print(_line("Subject", f"{_describe(target.subject)}"))
     print()
     for dimension in rubric.dimensions:
-        print(f"  {dimension.id}  ({dimension.points} pt)  {dimension.title}")
+        print(t('  {0}  ({1} pt)  {2}', dimension.id, dimension.points, t(dimension.title)))
         if dimension.asks:
-            for line in dimension.asks.splitlines():
+            for line in t(dimension.asks).splitlines():
                 print(f"      {line}")
     print()
     print(_line("Threshold", f"score >= {target.rule.params.get('min_score', 8)}"
                              f" / {rubric.scale_max}"))
-    print(_line("Blockers", f"at most {target.rule.params.get('max_blockers', 0)}"))
-    print(_line("Approval", "a human decision is required"
+    print(_line("Blockers", t("at most {0}", target.rule.params.get("max_blockers", 0))))
+    print(_line("Approval", t("a human decision is required")
                 if target.rule.params.get("requires_human_approval", True)
-                else "not required"))
+                else t("not required")))
     print()
-    print("Required sections in an assessment:")
+    print(t('Required sections in an assessment:'))
     print(f"  {', '.join(readiness.REQUIRED_SECTIONS)}")
     if rubric.caveat:
         print()
-        for line in rubric.caveat.splitlines():
+        for line in t(rubric.caveat).splitlines():
             print(line)
     return 0
 
@@ -346,7 +346,7 @@ def cmd_readiness_assess(args: argparse.Namespace) -> int:
     data = readiness.read_input(args.input)
     recorded = readiness.record_assessment(project, target, data)
 
-    print(f"{target.rule.id}  assessment recorded")
+    print(t('{0}  assessment recorded', target.rule.id))
     print(_line("Score", f"{recorded.score}/{target.rubric.scale_max}"))
     print(_line("Rubric", recorded.rubric))
     print(_line("Assessor", recorded.actor))
@@ -355,13 +355,13 @@ def cmd_readiness_assess(args: argparse.Namespace) -> int:
         items = recorded.payload.get(section) or []
         if items:
             print()
-            print(f"{section.capitalize()} ({len(items)}):")
+            print(f"{t(section.capitalize())} ({len(items)}):")
             for index, item in enumerate(items, 1):
                 print(f"  {index}. {item}")
     print()
-    print("This is one reader's assessment of a document, not a measurement.")
-    print("It satisfies nothing on its own.")
-    print("Next          golden-thread verify")
+    print(t("This is one reader's assessment of a document, not a measurement."))
+    print(t('It satisfies nothing on its own.'))
+    print(t('Next          golden-thread verify'))
     return 0
 
 
@@ -390,19 +390,18 @@ def cmd_readiness_approve(args: argparse.Namespace) -> int:
 
     attestor = args.attestor or readiness.default_attestor(project)
 
-    print(f"{target.rule.id}  {target.rule.title}")
-    print(_line("Assessment", f"{assessment.score}/{target.rubric.scale_max} "
-                              f"by {assessment.actor}"))
+    print(f"{target.rule.id}  {t(target.rule.title)}")
+    print(_line("Assessment", t("{0}/{1} by {2}", assessment.score, target.rubric.scale_max, assessment.actor)))
     print(_line("Rubric", assessment.rubric))
     print(_line("Subject", _describe(target.subject)))
     for section in ("blockers", "decisions"):
         items = assessment.payload.get(section) or []
         for index, item in enumerate(items, 1):
-            print(f"  {section[:-1]} {index}. {item}")
+            print(f"  {t(section[:-1])} {index}. {item}")
     print(_line("Attestor", attestor))
     print()
-    print(f"This records that YOU {decision} this mission, on your own reading.")
-    print("The score above is an opinion; it has approved nothing.")
+    print(t('This records that YOU {0} this mission, on your own reading.', t(decision)))
+    print(t('The score above is an opinion; it has approved nothing.'))
     print()
 
     readiness.confirm(target, args.confirm)
@@ -411,10 +410,10 @@ def cmd_readiness_approve(args: argparse.Namespace) -> int:
     )
 
     print()
-    print(f"{target.rule.id}  human attestation recorded")
-    print(_line("Decision", recorded.decision))
+    print(t('{0}  human attestation recorded', target.rule.id))
+    print(_line("Decision", t(recorded.decision)))
     print(_line("Attestor", recorded.actor))
-    print("Next          golden-thread verify")
+    print(t('Next          golden-thread verify'))
     return 0
 
 
@@ -426,8 +425,8 @@ def cmd_attest(args: argparse.Namespace) -> int:
     decision = REFUSED if args.refuse else ATTESTED
     attestor = args.attestor or attest_mod.default_actor(project)
 
-    print(f"{target.rule.id}  {target.rule.title}")
-    print(_line("Claim", target.statement))
+    print(f"{target.rule.id}  {t(target.rule.title)}")
+    print(_line("Claim", t(target.statement)))
     print(_line("Subject", _describe(target.subject)))
     print(_line("Attestor", attestor))
 
@@ -437,13 +436,13 @@ def cmd_attest(args: argparse.Namespace) -> int:
         # deciding whether they are willing to make it.
         print(_line("Confirm with", f"--confirm {attest_mod.challenge(target)!r}"))
         print()
-        print("Nothing was recorded.")
+        print(t('Nothing was recorded.'))
         return 0
 
     print()
-    print(f"This records that YOU {decision} this, on your own account.")
-    print("Nothing here checked it. Nothing here can: that is why this")
-    print("requirement is satisfied by a name rather than by a verdict.")
+    print(t('This records that YOU {0} this, on your own account.', t(decision)))
+    print(t('Nothing here checked it. Nothing here can: that is why this'))
+    print(t('requirement is satisfied by a name rather than by a verdict.'))
     print()
 
     attest_mod.confirm(target, args.confirm)
@@ -452,10 +451,10 @@ def cmd_attest(args: argparse.Namespace) -> int:
     )
 
     print()
-    print(f"{target.rule.id}  attestation recorded")
-    print(_line("Decision", recorded.decision))
+    print(t('{0}  attestation recorded', target.rule.id))
+    print(_line("Decision", t(recorded.decision)))
     print(_line("Attestor", recorded.actor))
-    print("Next          golden-thread verify")
+    print(t('Next          golden-thread verify'))
     return 0
 
 
@@ -467,131 +466,125 @@ def cmd_docs_stamp(args: argparse.Namespace) -> int:
     line, changed = docs_mod.stamp(project, target)
 
     relative = target.document.relative_to(project).as_posix()
-    print(f"{target.rule.id}  {'stamped' if changed else 'already current'}")
+    print(f"{target.rule.id}  {t('stamped' if changed else 'already current')}")
     print(_line("Document", relative))
     print(_line("Describes", f"{target.describes}/"))
     print(_line("Stamp", line))
     print()
-    print("This records that this document was stamped against this exact")
-    print("code. It is not a claim that the documentation is correct: nothing")
-    print("here read it, and nothing here could tell you if it were wrong.")
-    print("Next          golden-thread verify")
+    print(t('This records that this document was stamped against this exact'))
+    print(t('code. It is not a claim that the documentation is correct: nothing'))
+    print(t('here read it, and nothing here could tell you if it were wrong.'))
+    print(t('Next          golden-thread verify'))
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="golden-thread",
-        description="Attach a project to a versioned Golden Thread and verify it.",
+        description=t('Attach a project to a versioned Golden Thread and verify it.'),
     )
     parser.add_argument(
         "-C",
         "--project",
         default=".",
-        help="project directory (default: current directory)",
+        help=t('project directory (default: current directory)'),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    init = subparsers.add_parser("init", help="attach this project to a Golden Thread")
-    init.add_argument("--source", required=True, help="Git repository of the Golden Thread")
-    init.add_argument("--ref", required=True, help="tag or branch to pin, e.g. v0.1.0")
-    init.add_argument("--profile", help="profile to use (default: the source's own)")
+    init = subparsers.add_parser("init", help=t('attach this project to a Golden Thread'))
+    init.add_argument("--source", required=True, help=t('Git repository of the Golden Thread'))
+    init.add_argument("--ref", required=True, help=t('tag or branch to pin, e.g. v0.1.0'))
+    init.add_argument("--profile", help=t("profile to use (default: the source's own)"))
     init.set_defaults(func=cmd_init)
 
-    status = subparsers.add_parser("status", help="report the evidence on record")
-    status.add_argument("--json", action="store_true", help="machine-readable report")
+    status = subparsers.add_parser("status", help=t('report the evidence on record'))
+    status.add_argument("--json", action="store_true", help=t('machine-readable report'))
     status.set_defaults(func=cmd_status)
 
-    verify_cmd = subparsers.add_parser("verify", help="produce evidence for the profile's requirements")
-    verify_cmd.add_argument("--json", action="store_true", help="machine-readable report")
+    verify_cmd = subparsers.add_parser("verify", help=t("produce evidence for the profile's requirements"))
+    verify_cmd.add_argument("--json", action="store_true", help=t('machine-readable report'))
     verify_cmd.set_defaults(func=cmd_verify)
 
     readiness_cmd = subparsers.add_parser(
         "readiness",
-        help="the Definition of Ready: publish the rubric, record an "
-             "assessment, record a human decision",
+        help=t('the Definition of Ready: publish the rubric, record an assessment, record a human decision'),
     )
     readiness_sub = readiness_cmd.add_subparsers(dest="readiness_command", required=True)
 
     def _shared(sub):
         sub.add_argument(
             "--requirement",
-            help="which readiness requirement (only needed if the profile has "
-                 "more than one)",
+            help=t('which readiness requirement (only needed if the profile has more than one)'),
         )
         return sub
 
     rubric_cmd = _shared(readiness_sub.add_parser(
-        "rubric", help="print the versioned rubric this profile pins"
+        "rubric", help=t('print the versioned rubric this profile pins')
     ))
-    rubric_cmd.add_argument("--json", action="store_true", help="machine-readable rubric")
+    rubric_cmd.add_argument("--json", action="store_true", help=t('machine-readable rubric'))
     rubric_cmd.set_defaults(func=cmd_readiness_rubric)
 
     assess_cmd = _shared(readiness_sub.add_parser(
-        "assess", help="record an assessment produced against the rubric"
+        "assess", help=t('record an assessment produced against the rubric')
     ))
     assess_cmd.add_argument(
-        "--input", required=True, help="JSON assessment file, or - for stdin"
+        "--input", required=True, help=t('JSON assessment file, or - for stdin')
     )
     assess_cmd.set_defaults(func=cmd_readiness_assess)
 
     approve_cmd = _shared(readiness_sub.add_parser(
-        "approve", help="record a human decision on the recorded assessment"
+        "approve", help=t('record a human decision on the recorded assessment')
     ))
-    approve_cmd.add_argument("--attestor", help="who is deciding (default: git user.email)")
-    approve_cmd.add_argument("--note", help="why, in the attestor's own words")
+    approve_cmd.add_argument("--attestor", help=t('who is deciding (default: git user.email)'))
+    approve_cmd.add_argument("--note", help=t("why, in the attestor's own words"))
     approve_cmd.add_argument(
         "--reject",
         action="store_true",
-        help="record a refusal rather than an approval",
+        help=t('record a refusal rather than an approval'),
     )
     approve_cmd.add_argument(
         "--confirm",
-        help="the confirmation phrase, for use where no terminal is attached. "
-             "Recording an approval this way still records it as yours",
+        help=t('the confirmation phrase, for use where no terminal is attached. Recording an approval this way still records it as yours'),
     )
     approve_cmd.set_defaults(func=cmd_readiness_approve)
 
     attest_cmd = subparsers.add_parser(
         "attest",
-        help="record a claim no tool can check, for a requirement satisfied by "
-             "a person's word",
+        help=t("record a claim no tool can check, for a requirement satisfied by a person's word"),
     )
     attest_cmd.add_argument(
         "requirement",
         nargs="?",
-        help="which requirement (only needed if the profile has more than one)",
+        help=t('which requirement (only needed if the profile has more than one)'),
     )
-    attest_cmd.add_argument("--attestor", help="who is claiming (default: git user.email)")
-    attest_cmd.add_argument("--note", help="anything worth recording alongside it")
+    attest_cmd.add_argument("--attestor", help=t('who is claiming (default: git user.email)'))
+    attest_cmd.add_argument("--note", help=t('anything worth recording alongside it'))
     attest_cmd.add_argument(
         "--refuse",
         action="store_true",
-        help="record that this is NOT the case, rather than that it is",
+        help=t('record that this is NOT the case, rather than that it is'),
     )
     attest_cmd.add_argument(
         "--confirm",
-        help="the confirmation phrase, for use where no terminal is attached. "
-             "Recording an attestation this way still records it as yours",
+        help=t('the confirmation phrase, for use where no terminal is attached. Recording an attestation this way still records it as yours'),
     )
     attest_cmd.add_argument(
         "--show",
         action="store_true",
-        help="print the claim and the confirmation phrase, and record nothing",
+        help=t('print the claim and the confirmation phrase, and record nothing'),
     )
     attest_cmd.set_defaults(func=cmd_attest)
 
     docs_cmd = subparsers.add_parser(
-        "docs", help="the documentation requirement: stamp a document"
+        "docs", help=t('the documentation requirement: stamp a document')
     )
     docs_sub = docs_cmd.add_subparsers(dest="docs_command", required=True)
     stamp_cmd = docs_sub.add_parser(
-        "stamp", help="record which version of the code this document describes"
+        "stamp", help=t('record which version of the code this document describes')
     )
     stamp_cmd.add_argument(
         "--requirement",
-        help="which documentation requirement (only needed if the profile has "
-             "more than one)",
+        help=t('which documentation requirement (only needed if the profile has more than one)'),
     )
     stamp_cmd.set_defaults(func=cmd_docs_stamp)
 
@@ -604,5 +597,5 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except GoldenThreadError as exc:
-        print(f"golden-thread: {exc}", file=sys.stderr)
+        print(t('golden-thread: {0}', recorded_text(str(exc))), file=sys.stderr)
         return 2
