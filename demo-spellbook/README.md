@@ -212,25 +212,43 @@ DOC et COOKIE doivent normalement échouer au premier contrôle.
 > docs/ARCHITECTURE.md en cohérence avec Frost Ward et montre le diff.
 > Ne modifie ni les règles ni les seuils. Laisse-moi docs stamp et attest.
 
-**CLAUDE — expérience Bandit.**
+**CLAUDE — expérience Bandit : les tests passent, et la sécurité ?**
 
-> J’autorise cette expérience temporaire. Lis .golden-thread/source/rules/SEC-001.toml
-> et montre fail_on_severity et min_confidence. Vérifie que
-> src/spells/protection/security_probe.py n’existe pas ; sinon, arrête-toi sans
-> y toucher. Crée uniquement ce fichier avec une fonction improvise(value) qui
-> retourne eval(value), sans jamais l’appeler. Exécute golden-thread verify.
-> Montre le finding, fichier, ligne, sévérité, confiance et caractère bloquant.
-> Explique ce qui vient de Bandit et de la policy. Attends avant de retirer le fichier.
+> Nous allons vérifier que le contrôle de sécurité détecte un défaut, même
+> lorsque les tests passent.
+>
+> Ajoute temporairement une fonction qui utilise `eval()` dans un nouveau fichier
+> `src/spells/protection/security_probe.py`. Ne l’exécute jamais. Si ce fichier
+> existe déjà, arrête-toi sans le modifier. Ne change aucun autre fichier.
+>
+> Lance `golden-thread verify`, puis explique quel problème Bandit a détecté,
+> où il se trouve et pourquoi la règle `SEC-001` le considère comme un échec.
+> Appuie ton explication sur le rapport et la règle attachée au projet.
+>
+> Garde le fichier le temps que nous lisions le résultat ensemble, puis attends
+> mon accord pour le retirer.
 
-**À observer :** B307 signale l’usage risqué de eval ; sévérité MEDIUM,
-seuils de sévérité et de confiance MEDIUM, `SEC-001 FAIL`. Après lecture :
+**À observer :** Bandit signale B307, l’usage potentiellement dangereux de
+`eval()`, avec une sévérité MEDIUM. La policy fixe les seuils qui rendent
+l’exigence non satisfaite : ici, sévérité et confiance au moins MEDIUM,
+donc `SEC-001 FAIL`.
 
-> Supprime uniquement security_probe.py que tu viens de créer, puis relance
-> golden-thread verify. Compare SEC-001 avant et après sans changer les autres
-> fichiers, les règles ni les attestations.
+Ces seuils se lisent dans `.golden-thread/source/rules/SEC-001.toml` :
+`fail_on_severity` pour la sévérité, `min_confidence` pour la confiance du scanner.
+Bandit détecte le problème ; la policy fixe les seuils d’échec. Plus tard,
+la configuration CI décidera de l’effet de ce verdict sur la pipeline.
 
-Le finding introduit disparaît. D’autres échecs peuvent subsister ; un PASS
-du scanner ne garantit pas l’absence de vulnérabilité.
+**CLAUDE — après lecture, retirer le défaut temporaire.**
+
+> Retire uniquement le fichier temporaire `src/spells/protection/security_probe.py`
+> que tu viens de créer, puis relance `golden-thread verify`. Vérifie que
+> `SEC-001` passe et indique si d’autres exigences restent à traiter.
+> Ne change ni les règles ni les attestations.
+
+**À observer :** le fichier temporaire et son diagnostic B307 ont disparu.
+`SEC-001` passe si aucun autre diagnostic n’atteint les seuils de la policy.
+D’autres exigences peuvent encore échouer ; un PASS du scanner ne garantit
+pas l’absence de vulnérabilité.
 
 **Avant de passer à la CI :** confirmez que
 `src/spells/protection/security_probe.py` a disparu et lisez le nouveau verdict
