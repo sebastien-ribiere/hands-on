@@ -72,14 +72,69 @@ golden-thread init \
 
 ## Repartir de zéro
 
-Le conteneur est jetable, mais le workspace est volontairement persistant. Pour
-rejouer le hands-on depuis l'état initial :
+Pour une nouvelle répétition, le script [demo/reset-lab.sh](demo/reset-lab.sh)
+remet le workspace à l’état initial de l’image. Il archive d’abord votre travail
+(code, mission, historique Git, preuves et attestations) dans un volume Docker
+séparé et vérifie cette archive avant de remplacer le workspace.
+
+**Sur votre poste, depuis le dépôt téléchargé :** quittez Claude avec `/exit`,
+puis le shell du lab avec `exit`. Si le conteneur n’a pas été lancé avec `--rm`,
+retirez vous-même ce conteneur arrêté ; le script refuse tout volume encore référencé.
 
 ```bash
-docker volume rm golden-thread-workspace
+docker pull ghcr.io/sebastien-ribiere/hands-on:lab
+bash demo/reset-lab.sh
 ```
 
-La connexion Claude peut rester dans son volume séparé.
+Relisez le nom du volume affiché, puis saisissez `reset golden-thread-workspace`
+pour confirmer. Le script conserve le volume de connexion Claude, ne monte ni
+le home ni le socket Docker dans ses conteneurs et ne lance pas Claude.
+Il requiert uniquement Bash et Docker sur le poste (Linux ou macOS).
+Ce script local est une option pour les répétitions ; il n’est pas un prérequis
+participant. Vous pouvez aussi conserver l’ancien workspace et choisir un
+nouveau nom de volume dans les commandes de lancement et de replay.
+
+Pour un volume de répétition ou une image figée :
+
+```bash
+bash demo/reset-lab.sh --workspace golden-thread-workspace-repetition --image ghcr.io/sebastien-ribiere/hands-on:lab
+```
+
+L’image doit déjà être disponible localement ; le script affiche son SHA et
+utilise cette version durant le reset. Les noms de workspace acceptés commencent
+par `golden-thread-workspace`. Aucun volume n’est supprimé automatiquement après
+un échec de sauvegarde. Si la restauration initiale échoue après la suppression
+du workspace, l’archive reste disponible.
+
+Après succès, relancez la commande Docker de démarrage avec le même nom de
+workspace et votre volume Claude habituel. Lancez **`claude` pour une nouvelle
+conversation**, sans `--continue` : l’historique Claude a été conservé et pourrait
+encore décrire la répétition précédente.
+
+### Récupérer une sauvegarde de reset
+
+Le script affiche un nom tel que `golden-thread-workspace-backup-…`. Ce volume
+contient `workspace.tar`. Pour récupérer le travail dans un **nouveau** volume,
+remplacez la valeur de `backup_volume` par le nom affiché et choisissez un nom
+inutilisé pour `restore_volume` :
+
+```bash
+backup_volume='golden-thread-workspace-backup-REMPLACER'
+restore_volume='golden-thread-workspace-restaure'
+# Ces vérifications évitent de créer une fausse sauvegarde ou d’écraser un volume.
+docker volume inspect "$backup_volume" >/dev/null && \
+  ! docker volume inspect "$restore_volume" >/dev/null 2>&1 && \
+  docker volume create "$restore_volume" && \
+  docker run --rm --network none --user 0 --workdir / --entrypoint bash \
+    --mount "type=volume,source=$backup_volume,target=/backup,readonly,volume-nocopy" \
+    --mount "type=volume,source=$restore_volume,target=/restore,volume-nocopy" \
+    ghcr.io/sebastien-ribiere/hands-on:lab \
+    -c 'tar -xpf /backup/workspace.tar -C /restore'
+```
+
+Relancez le lab en utilisant ce volume restauré pour `/workspace`.
+Les sauvegardes occupent de l’espace Docker et restent jusqu’à leur suppression
+manuelle, après vérification que vous n’en avez plus besoin.
 
 ## Rejouer le job GitLab sans donner accès au Docker du poste au lab
 
