@@ -387,6 +387,8 @@ restant, y compris COOKIE-001, doit rester visible.
 <a id="lab-reprise"></a>
 ### Reprendre sans recommencer
 
+Pour une nouvelle répétition depuis zéro : [reset avec sauvegarde](../LAB.md#repartir-de-zéro).
+
 **LAB**, après `/exit` si nécessaire :
 
 ```bash

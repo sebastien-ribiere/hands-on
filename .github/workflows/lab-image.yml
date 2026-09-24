@@ -10,6 +10,8 @@ on:
       - golden-thread-source/**
       - claude-code-adapter/**
       - demo-spellbook/**
+      - demo/reset-lab.sh
+      - demo/test-reset-lab.sh
       - demo/publish-source.sh
       - .github/workflows/lab-image.yml
   push:
@@ -22,6 +24,8 @@ on:
       - golden-thread-source/**
       - claude-code-adapter/**
       - demo-spellbook/**
+      - demo/reset-lab.sh
+      - demo/test-reset-lab.sh
       - demo/publish-source.sh
       - .github/workflows/lab-image.yml
   workflow_dispatch:
@@ -61,6 +65,9 @@ jobs:
             grep -q "Les sorts de protection" /tmp/verify-fr.txt
             grep -q "ON PATH" /tmp/verify-fr.txt
           '
+
+      - name: Verify reset and backup recovery
+        run: bash demo/test-reset-lab.sh
 
   publish:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
